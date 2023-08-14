@@ -21,6 +21,7 @@ def load_config():
     parser.add_argument('--print_intervals', type=int, default=100)
     parser.add_argument('--evaluation', type=bool, default=False)
     parser.add_argument('--checkpoints', type=str, default=None, help='model checkpoints path')
+    parser.add_argument('--botnet_pretrain', type=str, default=None, help='model checkpoints path')
     parser.add_argument('--device_num', type=int, default=1)
     parser.add_argument('--gradient_clip', type=float, default=2.)
 

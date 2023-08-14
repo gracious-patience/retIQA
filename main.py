@@ -7,6 +7,7 @@ import os
 from config import load_config
 from preprocess import load_data
 from model import ResNet50
+from BoTNet import botnet
 import torchvision.models as models
 
 
@@ -22,7 +23,7 @@ def save_checkpoint(best_acc, model, optimizer, args, epoch):
         'global_epoch': epoch,
         'optimizer_state_dict': optimizer.state_dict(),
         'best_acc': best_acc,
-    }, os.path.join(f'{args.model}_checkpoints', f'checkpoint_model_best_heads{args.num_heads}.pth'))
+    }, os.path.join(f'../{args.model}_{args.dataset}_checkpoints', f'checkpoint_model_best_heads{args.num_heads}.pth'))
 
 
 def _train(epoch, train_loader, model, optimizer, criterion, args):
@@ -76,7 +77,14 @@ def main(args):
     train_loader, test_loader = load_data(args)
     print("Data is loaded!")
 
-    if args.model == "botnet50":
+    if args.model == "finetune_botnet50":
+        model = botnet(
+            args.botnet_pretrain,
+            resolution=(288, 384), heads=args.num_heads, num_classes=150
+        )
+        model.fc[1] = nn.Linear(in_features=8192, out_features=args.num_classes, bias=True)
+
+    elif args.model == "botnet50":
         model = ResNet50(num_classes=args.num_classes, resolution=(args.img_height, args.img_width), heads=args.num_heads)
 
     elif args.model == "vgg16_bn":
@@ -98,8 +106,8 @@ def main(args):
     print("Model is loaded!")
     optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
 
-    if not os.path.isdir(f'../{args.model}_checkpoints'):
-        os.mkdir(f'../{args.model}_checkpoints')
+    if not os.path.isdir(f'../{args.model}_{args.dataset}_checkpoints'):
+        os.mkdir(f'../{args.model}_{args.dataset}_checkpoints')
 
     if args.checkpoints is not None:
         checkpoints = torch.load(os.path.join(f'../{args.model}_checkpoints', args.checkpoints))
@@ -114,7 +122,11 @@ def main(args):
 
     if not args.evaluation:
         criterion = nn.CrossEntropyLoss()
-        lr_scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 12, T_mult=2, eta_min=0.0001)
+
+        if args.model == "finetune_botnet50":
+            lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=8, gamma=0.5)
+        else:
+            lr_scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, 12, T_mult=2, eta_min=0.0001)
 
         global_acc = 0.
         print("Training started!")
@@ -130,7 +142,7 @@ def main(args):
     else:
         _eval(start_epoch, test_loader, model, args)
 
-    print("Best acc: ", best_acc)
+    print("Best acc: ", global_acc)
 
 
 if __name__ == '__main__':

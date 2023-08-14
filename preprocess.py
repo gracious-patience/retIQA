@@ -68,10 +68,29 @@ def load_data(args):
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
+    elif args.dataset == 'tid2013':
+        train_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.448, 0.483, 0.491],
+                std=[0.248, 0.114, 0.106]
+            ),
+            transforms.Resize((args.img_height, args.img_width)),
+        ])
+        dataset = DistortedTid2013(args.data_path, transform=train_transform)
+        print(len(dataset))
+
+        train_size = int(0.8 * len(dataset))
+        test_size = len(dataset) - train_size
+        train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+        test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+
     return train_loader, test_loader
 
 
-class DistortedTids2013(Dataset):
+class DistortedTid2013(Dataset):
     def __init__(self, img_dir, transform=None) -> None:
         self.img_dir = img_dir
         self.transform = transform
@@ -83,6 +102,7 @@ class DistortedTids2013(Dataset):
         img_name = os.listdir(self.img_dir)[idx]
         img_path = self.img_dir + "/" + img_name
         image = Image.open(img_path)
+        image = Image.open(img_path).convert('YCbCr')
         _ , dist, level = img_name.split('_')
         
         # 5 = number of distorsion levels
@@ -115,12 +135,15 @@ class DistortedKadis700k(Dataset):
     def __init__(self, img_dir, transform=None):
         self.img_dir = img_dir
         self.transform = transform
+        self.img_paths = glob.glob(os.path.join(self.img_dir,  '*.bmp'))
+        self.length = len(self.img_paths)
+
     
     def __len__(self):
-        return len(glob.glob(os.path.join(self.img_dir,  '*.bmp')))
+        return self.length
     
     def __getitem__(self, idx):
-        img_path = glob.glob(os.path.join(self.img_dir,  '*.bmp'))[idx]
+        img_path = self.img_paths[idx]
         img_name = img_path.split('/')[-1]
         image = Image.open(img_path).convert('YCbCr')
         _ , dist, level = img_name.split('_')

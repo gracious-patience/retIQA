@@ -150,6 +150,23 @@ def ResNet50(num_classes=150, resolution=(288,288), heads=16):
     model = ResNet(Bottleneck, [3, 4, 6, 3], num_classes=num_classes, resolution=resolution, heads=heads)
     return model.apply(weights_init)
 
+def botnet(pretrained_model, num_classes=150, resolution=(288,288), heads=16):
+    model = ResNet(Bottleneck, [3, 4, 6, 3], num_classes=num_classes, resolution=resolution, heads=heads)
+    if pretrained_model is not None:
+        print("=> Using pre-trained distortion perception module from {}.".format(pretrained_model))
+        checkpoint = torch.load(pretrained_model)
+        try:
+            # model = torch.nn.DataParallel(model)
+            model.load_state_dict(checkpoint['state_dict'],strict=True)
+        except:
+            model.load_state_dict({k.replace('module.', ''): v for k, v in checkpoint['state_dict'].items()})
+    else:
+        print("\033[91m" + "=" * 80)
+        print("Warning: please provide a valid path for the pre-trained distortion-aware model.")
+        print("=" * 80 + "\033[0m")
+
+    return model
+
 def weights_init(m):
     classname = m.__class__.__name__
     # print(classname)
