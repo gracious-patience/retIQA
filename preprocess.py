@@ -84,6 +84,8 @@ class DistortedTids2013(Dataset):
         img_path = self.img_dir + "/" + img_name
         image = Image.open(img_path)
         _ , dist, level = img_name.split('_')
+        
+        # 5 = number of distorsion levels
         label = (int(dist)-1)*5 + int(level.split('.')[0])-1
         if self.transform:
             image = self.transform(image)
@@ -102,6 +104,8 @@ class DistortedKadid10k(Dataset):
         img_path = self.img_dir + "/" + img_name
         image = Image.open(img_path).convert('YCbCr')
         _ , dist, level = img_name.split('_')
+
+        # 5 = number of distorsion levels
         label = (int(dist)-1)*5 + int(level.split('.')[0])-1
         if self.transform:
             image = self.transform(image)
@@ -113,8 +117,6 @@ class DistortedKadis700k(Dataset):
         self.transform = transform
     
     def __len__(self):
-
-        
         return len(glob.glob(os.path.join(self.img_dir,  '*.bmp')))
     
     def __getitem__(self, idx):
