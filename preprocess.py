@@ -1,10 +1,12 @@
 from typing import Any
 from torch.utils.data import Dataset, DataLoader, random_split
+from sklearn.model_selection import train_test_split
 from torchvision.datasets import CIFAR10
 import torchvision.transforms as transforms
 import os
 import glob
 from PIL import Image
+import pandas as pd
 
 
 
@@ -58,12 +60,25 @@ def load_data(args):
             ),
             transforms.Resize((args.img_height, args.img_width)),
         ])
-        dataset = DistortedKadid10k(args.data_path, transform=train_transform)
-        print(len(dataset))
 
-        train_size = int(0.8 * len(dataset))
-        test_size = len(dataset) - train_size
-        train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+        df = pd.read_csv(args.csv_path)
+        train, test = train_test_split(df['reference'].unique(), test_size=0.2)
+
+        train_dataset = DistortedKadid10k(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=train_transform
+        )
+        test_dataset = DistortedKadid10k(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=train_transform
+        )
+        print(len(train_dataset), len(test_dataset))
 
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
@@ -77,12 +92,57 @@ def load_data(args):
             ),
             transforms.Resize((args.img_height, args.img_width)),
         ])
-        dataset = DistortedTid2013(args.data_path, transform=train_transform)
-        print(len(dataset))
 
-        train_size = int(0.8 * len(dataset))
-        test_size = len(dataset) - train_size
-        train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+        df = pd.read_csv(args.csv_path)
+        train, test = train_test_split(df['ref'].unique(), test_size=0.2)
+
+        train_dataset = DistortedTid2013(
+            refs= train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=train_transform
+        )
+        test_dataset = DistortedTid2013(
+            refs= test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=train_transform
+        )
+        print(len(train_dataset), len(test_dataset))
+
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+        test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+
+    elif args.dataset == 'csiq':
+        train_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.448, 0.483, 0.491],
+                std=[0.248, 0.114, 0.106]
+            ),
+            transforms.Resize((args.img_height, args.img_width)),
+        ])
+
+        df = pd.read_csv(args.csv_path)
+        train, test = train_test_split(df['image'].unique(), test_size=0.2)
+
+        train_dataset = CSIQ(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=train_transform
+        )
+        test_dataset = CSIQ(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=train_transform
+        )
+        print(len(train_dataset), len(test_dataset))
 
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
@@ -91,45 +151,75 @@ def load_data(args):
 
 
 class DistortedTid2013(Dataset):
-    def __init__(self, img_dir, transform=None) -> None:
+    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None):
         self.img_dir = img_dir
-        self.transform = transform
+        self.ref_dir = ref_dir
+        self.ycbcr_transform = ycbcr_transform
+        self.rgb_transform = rgb_transform
+
+        self.refs = refs
+        df = pd.read_csv(csv_path)
+        dfs = [df[df["ref"] == ref] for ref in refs]
+        self.df = pd.concat(dfs)
+        self.len = len(self.df)
     
     def __len__(self):
-        return len([name for name in os.listdir(self.img_dir)])
+        return self.len
     
     def __getitem__(self, idx):
-        img_name = os.listdir(self.img_dir)[idx]
-        img_path = self.img_dir + "/" + img_name
-        image = Image.open(img_path)
-        image = Image.open(img_path).convert('YCbCr')
-        _ , dist, level = img_name.split('_')
-        
-        # 5 = number of distorsion levels
-        label = (int(dist)-1)*5 + int(level.split('.')[0])-1
-        if self.transform:
-            image = self.transform(image)
-        return image, label
+        img_info = self.df.iloc[idx].to_dict()
+
+        # 5 = num of dst types
+        img_info['label'] = (img_info['dst_idx']-1)*5 + img_info['dst_lev']-1
+        img_path = f"{self.img_dir}{img_info['image']}"
+        img_info['pic_path'] = img_path
+        img_info['ref_path'] = f"{self.ref_dir}{img_info['image']}.BMP"
+        img_info['metric'] = img_info['mos']
+
+
+        ycbcr = Image.open(img_path).convert('YCbCr')
+        rgb = Image.open(img_info['ref_path'])
+
+        if self.ycbcr_transform:
+            ycbcr = self.ycbcr_transform(ycbcr)
+        if self.rgb_transform:
+            rgb = self.rgb_transform(rgb)
+        return ycbcr, rgb, img_info
     
 class DistortedKadid10k(Dataset):
-    def __init__(self, img_dir, transform=None) -> None:
+    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None):
         self.img_dir = img_dir
-        self.transform = transform
+        self.ref_dir = ref_dir
+        self.ycbcr_transform = ycbcr_transform
+        self.rgb_transform = rgb_transform
+
+        self.refs = refs
+        df = pd.read_csv(csv_path)
+        dfs = [df[df["reference"] == ref] for ref in refs]
+        self.df = pd.concat(dfs)
+        self.len = len(self.df)
     
     def __len__(self):
-        return len([name for name in os.listdir(self.img_dir)])
+        return self.len
     
     def __getitem__(self, idx):
-        img_name = os.listdir(self.img_dir)[idx]
-        img_path = self.img_dir + "/" + img_name
-        image = Image.open(img_path).convert('YCbCr')
-        _ , dist, level = img_name.split('_')
+        img_info = self.df.iloc[idx].to_dict()
 
-        # 5 = number of distorsion levels
-        label = (int(dist)-1)*5 + int(level.split('.')[0])-1
-        if self.transform:
-            image = self.transform(image)
-        return image, label
+        # 5 = num of dst types
+        img_info['label'] = (img_info['noise']-1)*5 + int(img_info['image'].split('_')[-1].split('.')[0]) -1
+        img_path = f"{self.img_dir}{img_info['image']}"
+        img_info['pic_path'] = img_path
+        img_info['ref_path'] = f"{self.ref_dir}{img_info['reference']}.png"
+        img_info['metric'] = img_info['dmos']
+
+        ycbcr = Image.open(img_path).convert('YCbCr')
+        rgb = Image.open(img_info['ref_path'])
+
+        if self.ycbcr_transform:
+            ycbcr = self.ycbcr_transform(ycbcr)
+        if self.rgb_transform:
+            rgb = self.rgb_transform(rgb)
+        return ycbcr, rgb, img_info
 
 class DistortedKadis700k(Dataset):
     def __init__(self, img_dir, transform=None):
@@ -153,3 +243,40 @@ class DistortedKadis700k(Dataset):
         if self.transform:
             image = self.transform(image)
         return image, label
+
+class CSIQ(Dataset):
+    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None):
+        self.img_dir = img_dir
+        self.ref_dir = ref_dir
+        self.ycbcr_transform = ycbcr_transform
+        self.rgb_transform = rgb_transform
+        self.refs = refs
+        self.df = pd.read_csv(csv_path)
+        dfs = [self.df[self.df["image"] == ref] for ref in refs]
+        self.df = pd.concat(dfs)
+        self.len = len(self.df)
+    
+    def __len__(self):
+        return self.len
+    
+    def __getitem__(self, idx):
+        img_info = self.df.iloc[idx].to_dict()
+
+        # 6 = num of dst types
+        img_info['label'] = (img_info['dst_idx']-1)*6 + img_info['dst_lev']-1
+        img_path = f"{self.img_dir}{img_info['dst_type']}/{img_info['image']}.{img_info['dst_type']}.{img_info['dst_lev']}.png"
+        
+
+        img_info['pic_path'] = img_path
+        img_info['ref_path'] = f"{self.ref_dir}{img_info['image']}.png"
+        img_info['metric'] = img_info['dmos']
+
+
+        ycbcr = Image.open(img_path).convert('YCbCr')
+        rgb = Image.open(img_info['ref_path'])
+
+        if self.ycbcr_transform:
+            ycbcr = self.ycbcr_transform(ycbcr)
+        if self.rgb_transform:
+            rgb = self.rgb_transform(rgb)
+        return ycbcr, rgb, img_info

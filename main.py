@@ -32,9 +32,9 @@ def _train(epoch, train_loader, model, optimizer, criterion, args):
     losses = 0.
     acc = 0.
     total = 0.
-    for idx, (data, target) in enumerate(train_loader):
+    for idx, (data, _ , target) in enumerate(train_loader):
         if args.cuda:
-            data, target = data.to(f"cuda:{args.device_num}"), target.to(f"cuda:{args.device_num}")
+            data, target = data.to(f"cuda:{args.device_num}"), target['label'].to(f"cuda:{args.device_num}")
 
         output = model(data)
         _, pred = F.softmax(output, dim=-1).max(1)
@@ -61,9 +61,9 @@ def _eval(epoch, test_loader, model, args):
 
     acc = 0.
     with torch.no_grad():
-        for data, target in test_loader:
+        for data, _ , target in test_loader:
             if args.cuda:
-                data, target = data.to(f"cuda:{args.device_num}"), target.to(f"cuda:{args.device_num}")
+                data, target = data.to(f"cuda:{args.device_num}"), target['label'].to(f"cuda:{args.device_num}")
             output = model(data)
             _, pred = F.softmax(output, dim=-1).max(1)
 
