@@ -19,6 +19,8 @@ def load_config():
     parser.add_argument('--weight_decay', type=float, default=1e-4)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--finetune', type=int, default=1)
+    parser.add_argument('--retrieve', type=int, default=1)
+    parser.add_argument('--num_iters', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)
     parser.add_argument('--cuda', type=bool, default=True)
     parser.add_argument('--epochs', type=int, default=30)

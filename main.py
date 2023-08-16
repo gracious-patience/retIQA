@@ -82,6 +82,7 @@ def _eval(epoch, test_loader, model, args):
 
 def main(args):
 
+    print(f"Seed: {args.seed}")
     # 1
     if args.finetune:
         train_loader, test_loader = load_data(args)
@@ -160,46 +161,47 @@ def main(args):
         print("Best acc: ", global_acc)
 
     # 2
-    train_loader, test_loader = load_data2(args)
+    if args.retrieve:
+        train_loader, test_loader = load_data2(args)
 
-    model = RetIQANet(
-        dpm_checkpoints=finetuned_model_path,
-        train_dataset=train_loader,
-        cuda=args.device_num,
-        K=args.k
-    )
+        model = RetIQANet(
+            dpm_checkpoints=finetuned_model_path,
+            train_dataset=train_loader,
+            cuda=args.device_num,
+            K=args.k
+        )
 
-    r_s = []
-    gr_trs = []
-    if args.cuda:
-        device = f"cuda:{args.device_num}"
-    else:
-        device = "cpu"
+        r_s = []
+        gr_trs = []
+        if args.cuda:
+            device = f"cuda:{args.device_num}"
+        else:
+            device = "cpu"
 
-    for ycbcr, rgb, y in test_loader:
-        res = model(ycbcr.to(device), rgb.to(device))
-        gr_trs.append(y['metric'])
-        r_s.append(res)
-    t_r_s = []
-    for r in r_s:
-        t_r_s.append(torch.tensor(r))
-    srocc = stats.spearmanr(torch.concat(t_r_s), torch.concat(gr_trs))[0]
-    plcc = stats.pearsonr(torch.concat(t_r_s), torch.concat(gr_trs))[0]
+        for ycbcr, rgb, y in test_loader:
+            res = model(ycbcr.to(device), rgb.to(device))
+            gr_trs.append(y['metric'])
+            r_s.append(res)
+        t_r_s = []
+        for r in r_s:
+            t_r_s.append(torch.tensor(r))
+        srocc = stats.spearmanr(torch.concat(t_r_s), torch.concat(gr_trs))[0]
+        plcc = stats.pearsonr(torch.concat(t_r_s), torch.concat(gr_trs))[0]
 
-    df = pd.read_csv(args.logging_path)
-    results = [
-        time.time(),
-        args.dataset,
-        global_acc,
-        args.aggregation,
-        args.k,
-        args.batch_size2,
-        args.seed,
-        srocc,
-        plcc
-    ]
-    df.loc[len(df)] = results
-    df.to_csv(args.logging_path, index=False)
+        df = pd.read_csv(args.logging_path)
+        results = [
+            time.time(),
+            args.dataset,
+            global_acc,
+            args.aggregation,
+            args.k,
+            args.batch_size2,
+            args.seed,
+            srocc,
+            plcc
+        ]
+        df.loc[len(df)] = results
+        df.to_csv(args.logging_path, index=False)
 
 
 

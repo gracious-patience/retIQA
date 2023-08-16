@@ -74,7 +74,8 @@ def load_data(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
-            rgb_transform=small_transform
+            rgb_transform=small_transform,
+            type="test"
         )
         test_dataset = DistortedKadid10k(
             refs=test,
@@ -82,7 +83,8 @@ def load_data(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
-            rgb_transform=small_transform
+            rgb_transform=small_transform,
+            type="test"
         )
         print(len(train_dataset), len(test_dataset))
 
@@ -108,7 +110,8 @@ def load_data(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
-            rgb_transform=small_transform
+            rgb_transform=small_transform,
+            type="test"
         )
         test_dataset = DistortedTid2013(
             refs= test,
@@ -116,7 +119,8 @@ def load_data(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
-            rgb_transform=small_transform
+            rgb_transform=small_transform,
+            type="test"
         )
         print(len(train_dataset), len(test_dataset))
 
@@ -142,7 +146,8 @@ def load_data(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
-            rgb_transform=small_transform
+            rgb_transform=small_transform,
+            type="test"
         )
         test_dataset = CSIQ(
             refs=test,
@@ -150,7 +155,8 @@ def load_data(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
-            rgb_transform=small_transform
+            rgb_transform=small_transform,
+            type="test"
         )
         print(len(train_dataset), len(test_dataset))
 
@@ -186,7 +192,8 @@ def load_data2(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=transforms.ToTensor()
+            rgb_transform=transforms.ToTensor(),
+            type="train"
         )
         test_dataset = CSIQ(
             refs=test,
@@ -194,7 +201,8 @@ def load_data2(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=rgb_transform
+            rgb_transform=rgb_transform,
+            type="test"
         )
 
     elif args.dataset == "kadid10k":
@@ -205,7 +213,8 @@ def load_data2(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=transforms.ToTensor()
+            rgb_transform=transforms.ToTensor(),
+            type="train"
         )
         test_dataset = DistortedKadid10k(
             refs=test,
@@ -213,7 +222,8 @@ def load_data2(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=rgb_transform
+            rgb_transform=rgb_transform,
+            type="test"
         )
 
     elif args.dataset == "tid2013":
@@ -224,7 +234,8 @@ def load_data2(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=transforms.ToTensor()
+            rgb_transform=transforms.ToTensor(),
+            type="train"
         )
         test_dataset = DistortedTid2013(
             refs=test,
@@ -232,17 +243,18 @@ def load_data2(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=rgb_transform
+            rgb_transform=rgb_transform,
+            type="test"
         )
 
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, num_workers=12)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size2, shuffle=False, num_workers=args.num_workers)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size2, shuffle=False, num_workers=args.num_workers)
 
     return train_loader, test_loader
 
 
 class DistortedTid2013(Dataset):
-    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None):
+    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None, type="train"):
         self.img_dir = img_dir
         self.ref_dir = ref_dir
         self.ycbcr_transform = ycbcr_transform
@@ -253,6 +265,7 @@ class DistortedTid2013(Dataset):
         dfs = [df[df["ref"] == ref] for ref in refs]
         self.df = pd.concat(dfs)
         self.len = len(self.df)
+        self.type = type
     
     def __len__(self):
         return self.len
@@ -267,18 +280,20 @@ class DistortedTid2013(Dataset):
         img_info['ref_path'] = f"{self.ref_dir}{img_info['ref']}.BMP"
         img_info['metric'] = img_info['mos']
 
-
         ycbcr = Image.open(img_path).convert('YCbCr')
-        rgb = Image.open(img_info['ref_path'])
-
         if self.ycbcr_transform:
             ycbcr = self.ycbcr_transform(ycbcr)
+
+        if self.type == "train":
+            return ycbcr, img_info
+
+        rgb = Image.open(img_info['ref_path'])
         if self.rgb_transform:
             rgb = self.rgb_transform(rgb)
         return ycbcr, rgb, img_info
     
 class DistortedKadid10k(Dataset):
-    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None):
+    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None, type="train"):
         self.img_dir = img_dir
         self.ref_dir = ref_dir
         self.ycbcr_transform = ycbcr_transform
@@ -289,6 +304,7 @@ class DistortedKadid10k(Dataset):
         dfs = [df[df["reference"] == ref] for ref in refs]
         self.df = pd.concat(dfs)
         self.len = len(self.df)
+        self.type = type
     
     def __len__(self):
         return self.len
@@ -302,6 +318,13 @@ class DistortedKadid10k(Dataset):
         img_info['pic_path'] = img_path
         img_info['ref_path'] = f"{self.ref_dir}{img_info['reference']}"
         img_info['metric'] = img_info['dmos']
+
+        ycbcr = Image.open(img_path).convert('YCbCr')
+        if self.ycbcr_transform:
+            ycbcr = self.ycbcr_transform(ycbcr)
+
+        if self.type == "train":
+            return ycbcr, img_info
 
         ycbcr = Image.open(img_path).convert('YCbCr')
         rgb = Image.open(img_info['ref_path'])
@@ -336,7 +359,7 @@ class DistortedKadis700k(Dataset):
         return image, label
 
 class CSIQ(Dataset):
-    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None):
+    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None, type="train"):
         self.img_dir = img_dir
         self.ref_dir = ref_dir
         self.ycbcr_transform = ycbcr_transform
@@ -346,6 +369,7 @@ class CSIQ(Dataset):
         dfs = [self.df[self.df["image"] == ref] for ref in refs]
         self.df = pd.concat(dfs)
         self.len = len(self.df)
+        self.type = type
     
     def __len__(self):
         return self.len
@@ -362,6 +386,12 @@ class CSIQ(Dataset):
         img_info['ref_path'] = f"{self.ref_dir}{img_info['image']}.png"
         img_info['metric'] = img_info['dmos']
 
+        ycbcr = Image.open(img_path).convert('YCbCr')
+        if self.ycbcr_transform:
+            ycbcr = self.ycbcr_transform(ycbcr)
+
+        if self.type == "train":
+            return ycbcr, img_info
 
         ycbcr = Image.open(img_path).convert('YCbCr')
         rgb = Image.open(img_info['ref_path'])
