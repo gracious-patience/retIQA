@@ -1,0 +1,2 @@
+time,dataset,finetuned_classifier_acc,aggregation,k,batch_size,seed,srocc,plcc
+1692173730.869717,csiq,82.1,average score,9,2,5,0.481132064544251,0.46520989541243163

@@ -12,6 +12,10 @@ import pandas as pd
 
 def load_data(args):
 
+    small_transform = transforms.Compose([
+            transforms.ToTensor(),
+    ])
+
     if args.dataset == 'cifar10':
         train_transform = transforms.Compose([
             transforms.RandomCrop(32),
@@ -62,21 +66,23 @@ def load_data(args):
         ])
 
         df = pd.read_csv(args.csv_path)
-        train, test = train_test_split(df['reference'].unique(), test_size=0.2)
+        train, test = train_test_split(df['reference'].unique(), test_size=0.2, random_state=args.seed)
 
         train_dataset = DistortedKadid10k(
             refs=train,
             img_dir=args.data_path,
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
-            ycbcr_transform=train_transform
+            ycbcr_transform=train_transform,
+            rgb_transform=small_transform
         )
         test_dataset = DistortedKadid10k(
             refs=test,
             img_dir=args.data_path,
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
-            ycbcr_transform=train_transform
+            ycbcr_transform=train_transform,
+            rgb_transform=small_transform
         )
         print(len(train_dataset), len(test_dataset))
 
@@ -94,21 +100,23 @@ def load_data(args):
         ])
 
         df = pd.read_csv(args.csv_path)
-        train, test = train_test_split(df['ref'].unique(), test_size=0.2)
+        train, test = train_test_split(df['ref'].unique(), test_size=0.2, random_state=args.seed)
 
         train_dataset = DistortedTid2013(
             refs= train,
             img_dir=args.data_path,
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
-            ycbcr_transform=train_transform
+            ycbcr_transform=train_transform,
+            rgb_transform=small_transform
         )
         test_dataset = DistortedTid2013(
             refs= test,
             img_dir=args.data_path,
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
-            ycbcr_transform=train_transform
+            ycbcr_transform=train_transform,
+            rgb_transform=small_transform
         )
         print(len(train_dataset), len(test_dataset))
 
@@ -126,26 +134,109 @@ def load_data(args):
         ])
 
         df = pd.read_csv(args.csv_path)
-        train, test = train_test_split(df['image'].unique(), test_size=0.2)
+        train, test = train_test_split(df['image'].unique(), test_size=0.2, random_state=args.seed)
 
         train_dataset = CSIQ(
             refs=train,
             img_dir=args.data_path,
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
-            ycbcr_transform=train_transform
+            ycbcr_transform=train_transform,
+            rgb_transform=small_transform
         )
         test_dataset = CSIQ(
             refs=test,
             img_dir=args.data_path,
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
-            ycbcr_transform=train_transform
+            ycbcr_transform=train_transform,
+            rgb_transform=small_transform
         )
         print(len(train_dataset), len(test_dataset))
 
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+
+    return train_loader, test_loader
+
+
+def load_data2(args):
+    df = pd.read_csv(args.csv_path)
+    ycbcr_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=(0.448, 0.483, 0.491),
+            std=(0.248, 0.114, 0.106)
+        ),
+        transforms.RandomCrop((288, 384))
+    ])
+    rgb_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=(0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225)
+        )
+    ])
+
+    if args.dataset == "csiq":
+        train, test = train_test_split(df['image'].unique(), test_size=0.2, random_state=args.seed)
+        train_dataset = CSIQ(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor()
+        )
+        test_dataset = CSIQ(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform
+        )
+
+    elif args.dataset == "kadid10k":
+        train, test = train_test_split(df['reference'].unique(), test_size=0.2, random_state=args.seed)
+        train_dataset = DistortedKadid10k(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor()
+        )
+        test_dataset = DistortedKadid10k(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform
+        )
+
+    elif args.dataset == "tid2013":
+        train, test = train_test_split(df['ref'].unique(), test_size=0.2, random_state=args.seed)
+        train_dataset = DistortedTid2013(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor()
+        )
+        test_dataset = DistortedTid2013(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform
+        )
+
+    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, num_workers=12)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size2, shuffle=False, num_workers=args.num_workers)
 
     return train_loader, test_loader
 
@@ -173,7 +264,7 @@ class DistortedTid2013(Dataset):
         img_info['label'] = (img_info['dst_idx']-1)*5 + img_info['dst_lev']-1
         img_path = f"{self.img_dir}{img_info['image']}"
         img_info['pic_path'] = img_path
-        img_info['ref_path'] = f"{self.ref_dir}{img_info['image']}.BMP"
+        img_info['ref_path'] = f"{self.ref_dir}{img_info['ref']}.BMP"
         img_info['metric'] = img_info['mos']
 
 
@@ -209,7 +300,7 @@ class DistortedKadid10k(Dataset):
         img_info['label'] = (img_info['noise']-1)*5 + int(img_info['image'].split('_')[-1].split('.')[0]) -1
         img_path = f"{self.img_dir}{img_info['image']}"
         img_info['pic_path'] = img_path
-        img_info['ref_path'] = f"{self.ref_dir}{img_info['reference']}.png"
+        img_info['ref_path'] = f"{self.ref_dir}{img_info['reference']}"
         img_info['metric'] = img_info['dmos']
 
         ycbcr = Image.open(img_path).convert('YCbCr')
