@@ -39,7 +39,7 @@ def _train(epoch, train_loader, model, optimizer, criterion, args):
     losses = 0.
     acc = 0.
     total = 0.
-    for idx, (data, _ , target) in enumerate(train_loader):
+    for idx, (data, _, _ , target) in enumerate(train_loader):
         if args.cuda:
             data, target = data.to(f"cuda:{args.device_num}"), target['label'].to(f"cuda:{args.device_num}")
 
@@ -68,7 +68,7 @@ def _eval(epoch, test_loader, model, args):
 
     acc = 0.
     with torch.no_grad():
-        for data, _ , target in test_loader:
+        for data, _, _ , target in test_loader:
             if args.cuda:
                 data, target = data.to(f"cuda:{args.device_num}"), target['label'].to(f"cuda:{args.device_num}")
             output = model(data)
@@ -164,12 +164,22 @@ def main(args):
     if args.retrieve:
         train_loader, test_loader = load_data2(args)
 
-        model = RetIQANet(
-            dpm_checkpoints=finetuned_model_path,
-            train_dataset=train_loader,
-            cuda=args.device_num,
-            K=args.k
-        )
+        if args.finetune:
+            model = RetIQANet(
+                dpm_checkpoints=finetuned_model_path,
+                num_classes=args.num_classes,
+                train_dataset=train_loader,
+                cuda=args.device_num,
+                K=args.k
+            )
+        else:
+            model = RetIQANet(
+                dpm_checkpoints=finetuned_model_path,
+                num_classes=150,
+                train_dataset=train_loader,
+                cuda=args.device_num,
+                K=args.k
+            )
 
         r_s = []
         gr_trs = []

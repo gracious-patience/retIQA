@@ -12,7 +12,7 @@ import statistics
 
 
 class RetIQANet(nn.Module):
-    def __init__(self, dpm_checkpoints, train_dataset, cuda=-1, K=9):
+    def __init__(self, dpm_checkpoints, num_classes, train_dataset, cuda=-1, K=9):
         super(RetIQANet, self).__init__()
         # define number of neibours
         self.K = K
@@ -22,7 +22,7 @@ class RetIQANet(nn.Module):
             self.spm = self.spm.to(f"cuda:{cuda}")
         self.spm = self.spm.eval()
         # define distortion perception module
-        dpm = botnet(dpm_checkpoints, resolution=(288, 384), heads=16, num_classes=125)
+        dpm = botnet(dpm_checkpoints, resolution=(288, 384), heads=16, num_classes=num_classes)
         self.dpm = torch.nn.Sequential(*list(dpm.children())[:-2])
         # if config.is_freeze_dpm:
         for p in self.dpm.parameters():
