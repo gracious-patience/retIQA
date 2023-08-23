@@ -1,14 +1,17 @@
 import torch
+from model import ResNet50
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import argparse
+import sys
+sys.path.append("/home/sharfikeg/my_files/retIQA/ret/TReS")
 
 import os
 from config import load_config
 from preprocess import load_data, load_data2
-from model import ResNet50
 from BoTNet import botnet
-from RetIQANet import RetIQANet
+from RetIQANet import RetIQANet, NoRefRetIQANet, AkimboNet
 import torchvision.models as models
 from scipy import stats
 import time
@@ -79,8 +82,16 @@ def _eval(epoch, test_loader, model, args):
 
     return acc / len(test_loader.dataset) * 100.
 
+my_botnet_pretrain = "/home/sharfikeg/my_files/retIQA/dc_ret/my_botnet_pretrain/checkpoint_model_best_heads16.pth"
+botnet_pretrain="/home/sharfikeg/my_files/VIPNet/pretrained_model/botnet_model_best.pth.tar"
+
 
 def main(args):
+
+    if args.botnet_pretrain == botnet_pretrain:
+        my = 0
+    elif args.botnet_pretrain == my_botnet_pretrain:
+        my = 1
 
     print(f"Seed: {args.seed}")
     # 1
@@ -89,12 +100,26 @@ def main(args):
         print("Data is loaded!")
 
         if args.model == "finetune_botnet50":
-            model = botnet(
-                args.botnet_pretrain,
-                resolution=(288, 384), heads=args.num_heads, num_classes=150
-            )
-            model.fc[1] = nn.Linear(in_features=8192, out_features=args.num_classes, bias=True)
-
+            if not my:
+                model = botnet(pretrained_model=args.botnet_pretrain,
+                               num_classes=args.pretrain_classes,
+                               resolution=(args.img_width, args.img_height),
+                               heads=16
+                )
+                model.fc[1] = nn.Linear(in_features=8192, out_features=args.num_classes, bias=True)
+            elif my:
+                model = ResNet50(
+                    num_classes=args.pretrain_classes,
+                    resolution=(args.img_width, args.img_height),
+                    heads=args.num_heads
+                )
+                checkpoint = torch.load(args.botnet_pretrain)
+                try:
+                    model.load_state_dict(checkpoint['state_dict'],strict=True)
+                except:
+                    model.load_state_dict({k.replace('module.', ''): v for k, v in checkpoint['state_dict'].items()})
+                model.fc[1] = nn.Linear(in_features=2048, out_features=args.num_classes, bias=True)
+                
         elif args.model == "botnet50":
             model = ResNet50(num_classes=args.num_classes, resolution=(args.img_height, args.img_width), heads=args.num_heads)
 
@@ -162,41 +187,100 @@ def main(args):
 
     # 2
     if args.retrieve:
+        # dataloaders for retrieval-augmented setup
         train_loader, test_loader = load_data2(args)
 
-        if args.finetune:
-            model = RetIQANet(
-                dpm_checkpoints=finetuned_model_path,
-                num_classes=args.num_classes,
-                train_dataset=train_loader,
-                cuda=args.device_num,
-                K=args.k
-            )
-        else:
-            model = RetIQANet(
-                dpm_checkpoints=finetuned_model_path,
-                num_classes=150,
-                train_dataset=train_loader,
-                cuda=args.device_num,
-                K=args.k
-            )
-
+        # lists for results
         r_s = []
         gr_trs = []
-        if args.cuda:
-            device = f"cuda:{args.device_num}"
-        else:
-            device = "cpu"
 
-        for ycbcr, rgb, y in test_loader:
-            res = model(ycbcr.to(device), rgb.to(device))
-            gr_trs.append(y['metric'])
-            r_s.append(res)
-        t_r_s = []
-        for r in r_s:
-            t_r_s.append(torch.tensor(r))
-        srocc = stats.spearmanr(torch.concat(t_r_s), torch.concat(gr_trs))[0]
-        plcc = stats.pearsonr(torch.concat(t_r_s), torch.concat(gr_trs))[0]
+        if args.baseline == "no":
+            if args.setup == "reference":
+                if args.finetune:
+                    model = RetIQANet(
+                        dpm_checkpoints=finetuned_model_path,
+                        num_classes=args.num_classes,
+                        train_dataset=train_loader,
+                        cuda=args.device_num,
+                        K=args.k,
+                        my=my
+                    )
+                else:
+                    model = RetIQANet(
+                        dpm_checkpoints=finetuned_model_path,
+                        num_classes=args.pretrain_classes,
+                        train_dataset=train_loader,
+                        cuda=args.device_num,
+                        K=args.k,
+                        my=my
+                    )
+            elif args.setup == "no_reference":
+                if args.finetune:
+                    model = NoRefRetIQANet(
+                        dpm_checkpoints=finetuned_model_path,
+                        num_classes=args.num_classes,
+                        train_dataset=train_loader,
+                        cuda=args.device_num,
+                        K=args.k,
+                        my=my
+                    )
+                else:
+                    model = NoRefRetIQANet(
+                        dpm_checkpoints=finetuned_model_path,
+                        num_classes=args.pretrain_classes,
+                        train_dataset=train_loader,
+                        cuda=args.device_num,
+                        K=args.k,
+                        my=my
+                    )
+            device = f"cuda:{args.device_num}"
+            for ycbcr, rgb, _, y in test_loader:
+                res = model(ycbcr.to(device), rgb.to(device))
+                gr_trs.append(y['metric'])
+                r_s.append(res)
+        else:
+            # makings configs
+            # For baseline
+            backbone_config = argparse.Namespace()
+            backbone_config.network = 'resnet50'
+            backbone_config.nheadt = 16
+            backbone_config.num_encoder_layerst = 2
+            backbone_config.dim_feedforwardt = 64
+            backbone_config.ckpt = args.baseline_pretrain
+            backbone_config.cuda = args.backbone_device_num
+            # For RetIQANet
+            ret_config = argparse.Namespace()
+            ret_config.dpm_checkpoints = finetuned_model_path
+            if args.finetune:
+                ret_config.num_classes = args.num_classes
+            else:
+                ret_config.num_classes = args.pretrain_classes
+            ret_config.train_dataset = train_loader
+            ret_config.cuda = args.device_num
+            ret_config.K = 9
+            ret_config.my = my
+
+            model = AkimboNet(
+                ret_config=ret_config,
+                backbone_config=backbone_config,
+                setup=args.setup
+            )
+
+            device_ret = f"cuda:{ret_config.cuda}"
+            device_base = f"cuda:{backbone_config.cuda}"
+            for ycbcr, rgb_1, rgb_2, y in test_loader:
+                res = model(
+                    ycbcr.to(device_ret),
+                    rgb_1.to(device_ret),
+                    rgb_2.to(device_base)
+                )
+                gr_trs.append(y['metric'])
+                r_s.append(res)
+
+        
+
+        srocc = stats.spearmanr(torch.concat(r_s), torch.concat(gr_trs))[0]
+        plcc = stats.pearsonr(torch.concat(r_s), torch.concat(gr_trs))[0]
 
         df = pd.read_csv(args.logging_path)
         results = [
@@ -208,7 +292,10 @@ def main(args):
             args.batch_size2,
             args.seed,
             srocc,
-            plcc
+            plcc,
+            args.baseline,
+            args.setup,
+            args.finetune
         ]
         df.loc[len(df)] = results
         df.to_csv(args.logging_path, index=False)

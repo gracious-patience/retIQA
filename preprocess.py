@@ -7,6 +7,7 @@ import os
 import glob
 from PIL import Image
 import pandas as pd
+import torch
 
 
 
@@ -38,12 +39,13 @@ def load_data(args):
 
     elif args.dataset == 'kadis700k':
         train_transform = transforms.Compose([
+            transforms.Resize((args.img_height, args.img_width)),
             transforms.ToTensor(),
             transforms.Normalize(
                 mean=[0.448, 0.483, 0.491],
                 std=[0.248, 0.114, 0.106]
-            ),
-            transforms.Resize((args.img_height, args.img_width)),
+            )
+            
         ])
         dataset = DistortedKadis700k(args.data_path, transform=train_transform)
         print(len(dataset))
@@ -57,12 +59,12 @@ def load_data(args):
 
     elif args.dataset == 'kadid10k':
         train_transform = transforms.Compose([
+            transforms.Resize((args.img_height, args.img_width)),
             transforms.ToTensor(),
             transforms.Normalize(
                 mean=[0.448, 0.483, 0.491],
                 std=[0.248, 0.114, 0.106]
-            ),
-            transforms.Resize((args.img_height, args.img_width)),
+            ) 
         ])
 
         df = pd.read_csv(args.csv_path)
@@ -75,6 +77,7 @@ def load_data(args):
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
             rgb_transform=small_transform,
+            backbone_transform=transforms.ToTensor(),
             type="test"
         )
         test_dataset = DistortedKadid10k(
@@ -84,6 +87,7 @@ def load_data(args):
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
             rgb_transform=small_transform,
+            backbone_transform=transforms.ToTensor(),
             type="test"
         )
         print(len(train_dataset), len(test_dataset))
@@ -93,12 +97,12 @@ def load_data(args):
 
     elif args.dataset == 'tid2013':
         train_transform = transforms.Compose([
+            transforms.Resize((args.img_height, args.img_width)),
             transforms.ToTensor(),
             transforms.Normalize(
                 mean=[0.448, 0.483, 0.491],
                 std=[0.248, 0.114, 0.106]
-            ),
-            transforms.Resize((args.img_height, args.img_width)),
+            ) 
         ])
 
         df = pd.read_csv(args.csv_path)
@@ -111,6 +115,7 @@ def load_data(args):
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
             rgb_transform=small_transform,
+            backbone_transform=transforms.ToTensor(),
             type="test"
         )
         test_dataset = DistortedTid2013(
@@ -120,6 +125,7 @@ def load_data(args):
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
             rgb_transform=small_transform,
+            backbone_transform=transforms.ToTensor(),
             type="test"
         )
         print(len(train_dataset), len(test_dataset))
@@ -129,12 +135,12 @@ def load_data(args):
 
     elif args.dataset == 'csiq':
         train_transform = transforms.Compose([
+            transforms.Resize((args.img_height, args.img_width)),
             transforms.ToTensor(),
             transforms.Normalize(
                 mean=[0.448, 0.483, 0.491],
                 std=[0.248, 0.114, 0.106]
-            ),
-            transforms.Resize((args.img_height, args.img_width)),
+            )
         ])
 
         df = pd.read_csv(args.csv_path)
@@ -147,6 +153,7 @@ def load_data(args):
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
             rgb_transform=small_transform,
+            backbone_transform=transforms.ToTensor(),
             type="test"
         )
         test_dataset = CSIQ(
@@ -156,6 +163,7 @@ def load_data(args):
             csv_path=args.csv_path,
             ycbcr_transform=train_transform,
             rgb_transform=small_transform,
+            backbone_transform=transforms.ToTensor(),
             type="test"
         )
         print(len(train_dataset), len(test_dataset))
@@ -166,15 +174,16 @@ def load_data(args):
     return train_loader, test_loader
 
 
+
 def load_data2(args):
-    df = pd.read_csv(args.csv_path)
     ycbcr_transform = transforms.Compose([
+        transforms.Resize((288, 384)),
         transforms.ToTensor(),
         transforms.Normalize(
             mean=(0.448, 0.483, 0.491),
             std=(0.248, 0.114, 0.106)
         ),
-        transforms.Resize((288, 384))
+        
     ])
     rgb_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -193,6 +202,7 @@ def load_data2(args):
     ])
 
     if args.dataset == "csiq":
+        df = pd.read_csv(args.csv_path)
         train, test = train_test_split(df['image'].unique(), test_size=0.2, random_state=args.seed)
         train_dataset = CSIQ(
             refs=train,
@@ -212,10 +222,12 @@ def load_data2(args):
             ycbcr_transform=ycbcr_transform,
             rgb_transform=rgb_transform,
             backbone_transform=backbone_transform,
-            type="test"
+            type="test",
+            patches=args.patches
         )
 
     elif args.dataset == "kadid10k":
+        df = pd.read_csv(args.csv_path)
         train, test = train_test_split(df['reference'].unique(), test_size=0.2, random_state=args.seed)
         train_dataset = DistortedKadid10k(
             refs=train,
@@ -235,10 +247,12 @@ def load_data2(args):
             ycbcr_transform=ycbcr_transform,
             rgb_transform=rgb_transform,
             backbone_transform=backbone_transform,
-            type="test"
+            type="test",
+            patches=args.patches
         )
 
     elif args.dataset == "tid2013":
+        df = pd.read_csv(args.csv_path)
         train, test = train_test_split(df['ref'].unique(), test_size=0.2, random_state=args.seed)
         train_dataset = DistortedTid2013(
             refs=train,
@@ -258,22 +272,69 @@ def load_data2(args):
             ycbcr_transform=ycbcr_transform,
             rgb_transform=rgb_transform,
             backbone_transform=backbone_transform,
-            type="test"
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "koniq10k":
+        train_dataset = Koniq10k(
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = Koniq10k(
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "liveitw":
+        rgb_transform = transforms.Compose([
+            transforms.Resize((500, 500)),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=(0.485, 0.456, 0.406),
+                std=(0.229, 0.224, 0.225)
+            )
+        ])
+
+        train_dataset = Koniq10k(
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = LiveITW(
+            img_dir=args.test_data_path,
+            csv_path=args.test_csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
         )
 
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False, num_workers=12)
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=False, num_workers=12)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size2, shuffle=False, num_workers=args.num_workers)
 
     return train_loader, test_loader
 
 
 class DistortedTid2013(Dataset):
-    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train"):
+    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train", patches=1):
         self.img_dir = img_dir
         self.ref_dir = ref_dir
         self.ycbcr_transform = ycbcr_transform
         self.rgb_transform = rgb_transform
         self.backbone_transform = backbone_transform
+        self.patches = patches
 
         self.refs = refs
         df = pd.read_csv(csv_path)
@@ -306,11 +367,13 @@ class DistortedTid2013(Dataset):
         if self.rgb_transform:
             rgb_1 = self.rgb_transform(rgb)
         if self.backbone_transform:
-            rgb_2 = self.backbone_transform(rgb)
-        return ycbcr, rgb_1, rgb_2, img_info
+            rgb_2 = []
+            for _ in range(self.patches):
+                rgb_2.append(self.backbone_transform(rgb))
+        return ycbcr, rgb_1, torch.stack(rgb_2), img_info
     
 class DistortedKadid10k(Dataset):
-    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train"):
+    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train", patches=1):
         self.img_dir = img_dir
         self.ref_dir = ref_dir
         self.ycbcr_transform = ycbcr_transform
@@ -323,6 +386,7 @@ class DistortedKadid10k(Dataset):
         self.df = pd.concat(dfs)
         self.len = len(self.df)
         self.type = type
+        self.patches = patches
     
     def __len__(self):
         return self.len
@@ -348,8 +412,10 @@ class DistortedKadid10k(Dataset):
         if self.rgb_transform:
             rgb_1 = self.rgb_transform(rgb)
         if self.backbone_transform:
-            rgb_2 = self.backbone_transform(rgb)
-        return ycbcr, rgb_1, rgb_2, img_info
+            rgb_2 = []
+            for _ in range(self.patches):
+                rgb_2.append(self.backbone_transform(rgb))
+        return ycbcr, rgb_1, torch.stack(rgb_2), img_info
 
 class DistortedKadis700k(Dataset):
     def __init__(self, img_dir, transform=None):
@@ -375,7 +441,7 @@ class DistortedKadis700k(Dataset):
         return image, label
 
 class CSIQ(Dataset):
-    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train"):
+    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train", patches=1):
         self.img_dir = img_dir
         self.ref_dir = ref_dir
         self.ycbcr_transform = ycbcr_transform
@@ -387,6 +453,7 @@ class CSIQ(Dataset):
         self.df = pd.concat(dfs)
         self.len = len(self.df)
         self.type = type
+        self.patches = patches
     
     def __len__(self):
         return self.len
@@ -414,5 +481,91 @@ class CSIQ(Dataset):
         if self.rgb_transform:
             rgb_1 = self.rgb_transform(rgb)
         if self.backbone_transform:
-            rgb_2 = self.backbone_transform(rgb)
-        return ycbcr, rgb_1, rgb_2, img_info
+            rgb_2 = []
+            for _ in range(self.patches):
+                rgb_2.append(self.backbone_transform(rgb))
+        return ycbcr, rgb_1, torch.stack(rgb_2), img_info
+
+class Koniq10k(Dataset):
+    def __init__(self, img_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train", patches=1):
+        self.img_dir = img_dir
+        self.ycbcr_transform = ycbcr_transform
+        self.rgb_transform = rgb_transform
+        self.backbone_transform = backbone_transform
+        self.df = pd.read_csv(csv_path)
+        if type == 'train':
+            self.df = self.df[self.df["set"] == "training"]
+        elif type == 'test':
+            self.df = self.df[self.df["set"] == "test"]
+        self.len = len(self.df)
+        self.type = type
+        self.patches = patches
+    
+    def __len__(self):
+        return self.len
+    
+    def __getitem__(self, idx):
+        img_info = self.df.iloc[idx].to_dict()
+
+        # 6 = num of dst levels
+        img_path = f"{self.img_dir}{img_info['image_name']}"
+        
+
+        img_info['pic_path'] = img_path
+        img_info['metric'] = img_info['MOS']
+
+        ycbcr = Image.open(img_path).convert('YCbCr')
+        if self.ycbcr_transform:
+            ycbcr = self.ycbcr_transform(ycbcr)
+
+        if self.type == "train":
+            return ycbcr, img_info
+
+        rgb = Image.open(img_path)
+        if self.rgb_transform:
+            rgb_1 = self.rgb_transform(rgb)
+        if self.backbone_transform:
+            rgb_2 = []
+            for _ in range(self.patches):
+                rgb_2.append(self.backbone_transform(rgb))
+        return ycbcr, rgb_1, torch.stack(rgb_2), img_info
+
+class LiveITW(Dataset):
+    def __init__(self, img_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="test", patches=1):
+        self.img_dir = img_dir
+        self.ycbcr_transform = ycbcr_transform
+        self.rgb_transform = rgb_transform
+        self.backbone_transform = backbone_transform
+        self.df = pd.read_csv(csv_path)
+        self.len = len(self.df)
+        self.type = type
+        self.patches = patches
+    
+    def __len__(self):
+        return self.len
+    
+    def __getitem__(self, idx):
+        img_info = self.df.iloc[idx].to_dict()
+
+        # 6 = num of dst levels
+        img_path = f"{self.img_dir}{img_info['images']}"
+        
+
+        img_info['pic_path'] = img_path
+        img_info['metric'] = img_info['mos']
+
+        ycbcr = Image.open(img_path).convert('YCbCr')
+        if self.ycbcr_transform:
+            ycbcr = self.ycbcr_transform(ycbcr)
+
+        if self.type == "train":
+            return ycbcr, img_info
+
+        rgb = Image.open(img_path)
+        if self.rgb_transform:
+            rgb_1 = self.rgb_transform(rgb)
+        if self.backbone_transform:
+            rgb_2 = []
+            for _ in range(self.patches):
+                rgb_2.append(self.backbone_transform(rgb))
+        return ycbcr, rgb_1, torch.stack(rgb_2), img_info
