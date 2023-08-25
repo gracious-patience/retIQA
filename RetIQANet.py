@@ -29,17 +29,14 @@ class RetIQANet(nn.Module):
         # define distortion perception module
         if my:
             dpm = ResNet50(resolution=(288, 384), heads=16, num_classes=num_classes)
-            # dpm.fc[1] = nn.Linear(in_features=2048, out_features=125, bias=True)
             checkpoint = torch.load(dpm_checkpoints)
             try:
-                # model = torch.nn.DataParallel(model)
                 dpm.load_state_dict(checkpoint['state_dict'],strict=True)
             except:
                 dpm.load_state_dict({k.replace('module.', ''): v for k, v in checkpoint['state_dict'].items()})
         elif not my:
             dpm = botnet(pretrained_model=dpm_checkpoints, num_classes=num_classes, resolution=(288, 384), heads=16)
         self.dpm = torch.nn.Sequential(*list(dpm.children())[:-2])
-        # if config.is_freeze_dpm:
         for p in self.dpm.parameters():
             p.requires_grad = False
         self.dpm.eval()
@@ -147,17 +144,14 @@ class NoRefRetIQANet(nn.Module):
         # define distortion perception module
         if my:
             dpm = ResNet50(resolution=(288, 384), heads=16, num_classes=num_classes)
-            # dpm.fc[1] = nn.Linear(in_features=2048, out_features=125, bias=True)
             checkpoint = torch.load(dpm_checkpoints)
             try:
-                # model = torch.nn.DataParallel(model)
                 dpm.load_state_dict(checkpoint['state_dict'],strict=True)
             except:
                 dpm.load_state_dict({k.replace('module.', ''): v for k, v in checkpoint['state_dict'].items()})
         elif not my:
             dpm = botnet(pretrained_model=dpm_checkpoints, num_classes=num_classes, resolution=(288, 384), heads=16)
         self.dpm = torch.nn.Sequential(*list(dpm.children())[:-2])
-        # if config.is_freeze_dpm:
         for p in self.dpm.parameters():
             p.requires_grad = False
         self.dpm.eval()

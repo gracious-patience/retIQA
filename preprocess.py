@@ -9,6 +9,14 @@ from PIL import Image
 import pandas as pd
 import torch
 
+img_num = {
+        'csiq':     list(range(0, 30)),
+        'kadid10k': list(range(0, 80)),
+        'tid2013':  list(range(0, 25)),
+        'koniq10k':    list(range(0, 10073)),
+        'spaq':     list(range(0, 11125))
+        }
+
 
 
 def load_data(args):
@@ -69,7 +77,6 @@ def load_data(args):
 
         df = pd.read_csv(args.csv_path)
         train, test = train_test_split(df['reference'].unique(), test_size=0.2, random_state=args.seed)
-
         train_dataset = DistortedKadid10k(
             refs=train,
             img_dir=args.data_path,
@@ -107,7 +114,6 @@ def load_data(args):
 
         df = pd.read_csv(args.csv_path)
         train, test = train_test_split(df['ref'].unique(), test_size=0.2, random_state=args.seed)
-
         train_dataset = DistortedTid2013(
             refs= train,
             img_dir=args.data_path,
@@ -145,7 +151,6 @@ def load_data(args):
 
         df = pd.read_csv(args.csv_path)
         train, test = train_test_split(df['image'].unique(), test_size=0.2, random_state=args.seed)
-
         train_dataset = CSIQ(
             refs=train,
             img_dir=args.data_path,
@@ -182,8 +187,7 @@ def load_data2(args):
         transforms.Normalize(
             mean=(0.448, 0.483, 0.491),
             std=(0.248, 0.114, 0.106)
-        ),
-        
+        )
     ])
     rgb_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -276,7 +280,12 @@ def load_data2(args):
             patches=args.patches
         )
     elif args.dataset == "koniq10k":
+
+        total_num_images = img_num[args.dataset]
+        train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
+
         train_dataset = Koniq10k(
+            indeces=train_indeces,
             img_dir=args.data_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
@@ -285,6 +294,38 @@ def load_data2(args):
             type="train"
         )
         test_dataset = Koniq10k(
+            indeces=test_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "spaq":
+        total_num_images = img_num[args.dataset]
+        train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
+        rgb_transform = transforms.Compose([
+            transforms.Resize((512, 512)),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=(0.485, 0.456, 0.406),
+                std=(0.229, 0.224, 0.225)
+            )
+        ])
+
+        train_dataset = Spaq(
+            indeces=train_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = Spaq(
+            indeces=test_indeces,
             img_dir=args.data_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
@@ -302,7 +343,6 @@ def load_data2(args):
                 std=(0.229, 0.224, 0.225)
             )
         ])
-
         train_dataset = Koniq10k(
             img_dir=args.data_path,
             csv_path=args.csv_path,
@@ -487,16 +527,29 @@ class CSIQ(Dataset):
         return ycbcr, rgb_1, torch.stack(rgb_2), img_info
 
 class Koniq10k(Dataset):
-    def __init__(self, img_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train", patches=1):
+    def __init__(self, indeces, img_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train", patches=1):
         self.img_dir = img_dir
         self.ycbcr_transform = ycbcr_transform
         self.rgb_transform = rgb_transform
         self.backbone_transform = backbone_transform
         self.df = pd.read_csv(csv_path)
-        if type == 'train':
-            self.df = self.df[self.df["set"] == "training"]
-        elif type == 'test':
-            self.df = self.df[self.df["set"] == "test"]
+
+        # if type == 'train':
+        #     self.df = self.df[self.df["set"] == "training"]
+        # elif type == 'test':
+        #     self.df = self.df[self.df["set"] == "test"]
+        # elif type == 'val':
+        #     self.df = self.df[self.df["set"] == "validation"]
+        # elif type == 'test+train':
+        #     df1 = self.df[self.df["set"] == "training"]
+        #     df2 = self.df[self.df["set"] == "test"]
+        #     self.df = pd.concat([df1, df2])
+        # elif type == 'val+train':
+        #     df1 = self.df[self.df["set"] == "training"]
+        #     df2 = self.df[self.df["set"] == "validation"]
+        #     self.df = pd.concat([df1, df2])
+
+        self.df = self.df.iloc[indeces]
         self.len = len(self.df)
         self.type = type
         self.patches = patches
@@ -518,7 +571,7 @@ class Koniq10k(Dataset):
         if self.ycbcr_transform:
             ycbcr = self.ycbcr_transform(ycbcr)
 
-        if self.type == "train":
+        if self.type == "train" or self.type == 'test+train' or self.type == 'val+train':
             return ycbcr, img_info
 
         rgb = Image.open(img_path)
@@ -562,6 +615,52 @@ class LiveITW(Dataset):
             return ycbcr, img_info
 
         rgb = Image.open(img_path)
+        if self.rgb_transform:
+            rgb_1 = self.rgb_transform(rgb)
+        if self.backbone_transform:
+            rgb_2 = []
+            for _ in range(self.patches):
+                rgb_2.append(self.backbone_transform(rgb))
+        return ycbcr, rgb_1, torch.stack(rgb_2), img_info
+
+class Spaq(Dataset):
+    def __init__(self, indeces, img_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train", patches=1):
+        self.img_dir = img_dir
+        self.ycbcr_transform = ycbcr_transform
+        self.rgb_transform = rgb_transform
+        self.backbone_transform = backbone_transform
+        self.df = pd.read_csv(csv_path)
+        self.df = self.df.iloc[indeces]
+        self.len = len(self.df)
+        self.type = type
+        self.patches = patches
+    
+    def __len__(self):
+        return self.len
+    
+    def __getitem__(self, idx):
+        img_info = self.df.iloc[idx].to_dict()
+
+        # 6 = num of dst levels
+        img_path = f"{self.img_dir}{img_info['Image name']}"
+        
+
+        img_info['pic_path'] = img_path
+        img_info['metric'] = img_info['MOS']
+
+        ycbcr = Image.open(img_path).convert('YCbCr')
+        a, b = ycbcr.size
+        minimum = min(a,b)
+        ycbcr = transforms.CenterCrop((minimum, minimum))
+
+        if self.ycbcr_transform:
+            ycbcr = self.ycbcr_transform(ycbcr)
+
+        if self.type == "train":
+            return ycbcr, img_info
+
+        rgb = Image.open(img_path)
+        rgb = transforms.CenterCrop((minimum, minimum))
         if self.rgb_transform:
             rgb_1 = self.rgb_transform(rgb)
         if self.backbone_transform:

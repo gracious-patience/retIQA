@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import argparse
 import sys
-sys.path.append("/home/sharfikeg/my_files/retIQA/ret/TReS")
+sys.path.append("/home/sharfikeg/my_files/retIQA/dc_ret/DistorsionFeatureExtractor/TReS")
 
 import os
 from config import load_config
@@ -16,6 +16,8 @@ import torchvision.models as models
 from scipy import stats
 import time
 import pandas as pd
+import numpy as np
+import random
 
 torch.set_num_threads(36)
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -88,13 +90,21 @@ botnet_pretrain="/home/sharfikeg/my_files/VIPNet/pretrained_model/botnet_model_b
 
 def main(args):
 
+    print(f"Seed: {args.seed}")
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+
+    # TODO Baseline training
+
     if args.botnet_pretrain == botnet_pretrain:
         my = 0
     elif args.botnet_pretrain == my_botnet_pretrain:
         my = 1
 
-    print(f"Seed: {args.seed}")
-    # 1
+    
+    # 1 Feature extractor tuning
     if args.finetune:
         train_loader, test_loader = load_data(args)
         print("Data is loaded!")
@@ -185,7 +195,7 @@ def main(args):
         global_acc = torch.load(finetuned_model_path)['best_acc']
         print("Best acc: ", global_acc)
 
-    # 2
+    # 2 Image Quality Assessment with retrieval part
     if args.retrieve:
         # dataloaders for retrieval-augmented setup
         train_loader, test_loader = load_data2(args)
@@ -194,7 +204,11 @@ def main(args):
         r_s = []
         gr_trs = []
 
+        # Should we use baseline: TReS, Hyperiqa, etc. ?
+        # if no
         if args.baseline == "no":
+            # How do we retrieve from the DB?
+            # if two-stage chinese approach
             if args.setup == "reference":
                 if args.finetune:
                     model = RetIQANet(
@@ -214,6 +228,8 @@ def main(args):
                         K=args.k,
                         my=my
                     )
+            # How do we retrieve from the DB?
+            # if one-stage our 2k approach
             elif args.setup == "no_reference":
                 if args.finetune:
                     model = NoRefRetIQANet(
@@ -238,6 +254,8 @@ def main(args):
                 res = model(ycbcr.to(device), rgb.to(device))
                 gr_trs.append(y['metric'])
                 r_s.append(res)
+        # should we use baseline: TReS, Hyperiqa, etc. ?
+        # if yes
         else:
             # makings configs
             # For baseline
