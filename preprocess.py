@@ -314,6 +314,15 @@ def load_data2(args):
                 std=(0.229, 0.224, 0.225)
             )
         ])
+        backbone_transform = transforms.Compose([
+            transforms.Resize((512, 512)),
+            transforms.CenterCrop(size=224),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=(0.485, 0.456, 0.406),
+                std=(0.229, 0.224, 0.225)
+            )
+        ])
 
         train_dataset = Spaq(
             indeces=train_indeces,
