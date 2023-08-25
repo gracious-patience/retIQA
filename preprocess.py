@@ -660,7 +660,7 @@ class Spaq(Dataset):
         ycbcr = Image.open(img_path).convert('YCbCr')
         a, b = ycbcr.size
         minimum = min(a,b)
-        ycbcr = transforms.CenterCrop((minimum, minimum))
+        ycbcr = transforms.CenterCrop((minimum, minimum))(ycbcr)
 
         if self.ycbcr_transform:
             ycbcr = self.ycbcr_transform(ycbcr)
@@ -669,7 +669,7 @@ class Spaq(Dataset):
             return ycbcr, img_info
 
         rgb = Image.open(img_path)
-        rgb = transforms.CenterCrop((minimum, minimum))
+        rgb = transforms.CenterCrop((minimum, minimum))(rgb)
         if self.rgb_transform:
             rgb_1 = self.rgb_transform(rgb)
         if self.backbone_transform:

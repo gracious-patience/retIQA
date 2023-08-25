@@ -1,6 +1,6 @@
 
 import torch.utils.data as data
-import torchvision as T
+import torchvision.transforms as T
 from PIL import Image
 import os
 import os.path
