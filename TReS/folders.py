@@ -149,15 +149,12 @@ class CSIQFolder(data.Dataset):
         # refnames_all.sort()
 
         for i, item in enumerate(index):
-            print(i, item, refname[index[i]])
             train_sel = (refname[index[i]] == refnames_all)
             train_sel = np.where(train_sel == True)
             train_sel = train_sel[0].tolist()
             for j, item in enumerate(train_sel):
                 for aug in range(patch_num):
                     sample.append((os.path.join(root, 'dst_imgs_all', imgnames[item]), labels[item]))
-        self.index = index
-        self.refname = refname
         self.samples = sample
         self.transform = transform
 
@@ -196,7 +193,7 @@ class Koniq_10kFolder(data.Dataset):
         sample = []
         for i, item in enumerate(index):
             for aug in range(patch_num):
-                sample.append((os.path.join(root, '1024x768', imgname[item]), mos_all[item]))
+                sample.append((os.path.join(root, '512x384', imgname[item]), mos_all[item]))
 
         self.samples = sample
         self.transform = transform

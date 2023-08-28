@@ -1,5 +1,5 @@
 cuda=3
-backbone_cuda=0
+backbone_cuda=6
 botnet_pretrain="/home/sharfikeg/my_files/VIPNet/pretrained_model/botnet_model_best.pth.tar"
 botnet_pretrain_classes=150
 my_botnet_pretrain="/home/sharfikeg/my_files/retIQA/dc_ret/my_botnet_pretrain/checkpoint_model_best_heads16.pth"
@@ -40,11 +40,18 @@ koniq10k_csv_path="/home/sharfikeg/my_files/retIQA/koniq10k_info.csv"
 spaq_data_path="/extra_disk_1/sharfikeg/spaq/TestImage/"
 spaq_csv_path="/extra_disk_1/sharfikeg/spaq/spaq_info.csv"
 
-
-# spaq exps
+# koniq10k exps
 for i in {1..5}
 do
-    exp1="--model finetune_botnet50 --finetune 0 --retrieve 1 --ret_tr resize --num_iters 1 --img_width 288 --img_height 384 --num_classes $my_botnet_pretrain_classes --pretrain_classes $my_botnet_pretrain_classes --num_heads 16 --dataset spaq --data_path $spaq_data_path --batch_size 96 --batch_size2 $tres_batchsize --num_workers 12 --lr 0.005 --seed $i --csv_path $spaq_csv_path --botnet_pretrain $my_botnet_pretrain --baseline_pretrain ${tres_save_path}spaq_1_${i}/sv/bestmodel_1_${i} --device_num $cuda --backbone_device_num $backbone_cuda --logging_path $logging_path --k 9 --aggregation averaging --epochs 30 --baseline tres --setup no_reference --patches $tres_patches"
-    OMP_NUM_THREADS=54 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 128  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $backbone_cuda --datapath '/extra_disk_1/sharfikeg/spaq' --dataset 'spaq' --seed $i --vesion 1
+    exp1="--model finetune_botnet50 --finetune 0 --retrieve 1 --ret_tr resize --num_iters 1 --img_width 288 --img_height 384 --num_classes $my_botnet_pretrain_classes --pretrain_classes $my_botnet_pretrain_classes --num_heads 16 --dataset koniq10k --data_path $koniq10k_data_path --batch_size 96 --batch_size2 $tres_batchsize --num_workers 12 --lr 0.005 --seed $i --csv_path $koniq10k_csv_path --botnet_pretrain $my_botnet_pretrain --baseline_pretrain ${tres_save_path}koniq_1_${i}/sv/bestmodel_1_${i} --device_num $cuda --backbone_device_num $backbone_cuda --logging_path $logging_path --k 9 --aggregation averaging --epochs 30 --baseline tres --setup no_reference --patches $tres_patches"
+    OMP_NUM_THREADS=54 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 128  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $backbone_cuda --datapath '/home/sharfikeg/my_files/retIQA/koniq10k' --dataset 'koniq' --seed $i --vesion 1
     # python3 main.py $exp1
 done
+
+# # spaq exps
+# for i in {1..5}
+# do
+#     exp1="--model finetune_botnet50 --finetune 0 --retrieve 1 --ret_tr resize --num_iters 1 --img_width 288 --img_height 384 --num_classes $my_botnet_pretrain_classes --pretrain_classes $my_botnet_pretrain_classes --num_heads 16 --dataset spaq --data_path $spaq_data_path --batch_size 96 --batch_size2 $tres_batchsize --num_workers 12 --lr 0.005 --seed $i --csv_path $spaq_csv_path --botnet_pretrain $my_botnet_pretrain --baseline_pretrain ${tres_save_path}spaq_1_${i}/sv/bestmodel_1_${i} --device_num $cuda --backbone_device_num $backbone_cuda --logging_path $logging_path --k 9 --aggregation averaging --epochs 30 --baseline tres --setup no_reference --patches $tres_patches"
+#     OMP_NUM_THREADS=54 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 128  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $backbone_cuda --datapath '/extra_disk_1/sharfikeg/spaq' --dataset 'spaq' --seed $i --vesion 1
+#     # python3 main.py $exp1
+# done

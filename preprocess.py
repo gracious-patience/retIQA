@@ -307,7 +307,6 @@ def load_data2(args):
         total_num_images = img_num[args.dataset]
         train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
         rgb_transform = transforms.Compose([
-            transforms.Resize((512, 512)),
             transforms.ToTensor(),
             transforms.Normalize(
                 mean=(0.485, 0.456, 0.406),
@@ -315,7 +314,6 @@ def load_data2(args):
             )
         ])
         backbone_transform = transforms.Compose([
-            transforms.Resize((512, 512)),
             transforms.CenterCrop(size=224),
             transforms.ToTensor(),
             transforms.Normalize(

@@ -286,7 +286,7 @@ class TReS(object):
 			
 	
 			modelPath = svPath + '/model_{}_{}_{}'.format(str(self.config.vesion),str(seed),epochnum)
-			torch.save(self.net.state_dict(), modelPath)
+			# torch.save(self.net.state_dict(), modelPath)
 
 			train_srcc, _ = stats.spearmanr(pred_scores, gt_scores)
 
