@@ -33,7 +33,7 @@ class DataLoader(object):
 					torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406),
 													 std=(0.229, 0.224, 0.225))
 				])
-		elif dataset == 'koniq':
+		elif dataset == 'koniq' or dataset == 'big_koniq':
 			if istrain:
 				transforms = torchvision.transforms.Compose([
 					torchvision.transforms.RandomHorizontalFlip(),
@@ -93,6 +93,9 @@ class DataLoader(object):
 				root=path, index=img_indx, transform=transforms, patch_num=patch_num)
 		elif dataset == 'koniq':
 			self.data = folders.Koniq_10kFolder(
+				root=path, index=img_indx, transform=transforms, patch_num=patch_num)
+		elif dataset == 'big_koniq':
+			self.data = folders.BigKoniq_10kFolder(
 				root=path, index=img_indx, transform=transforms, patch_num=patch_num)
 		elif dataset == 'fblive':
 			self.data = folders.FBLIVEFolder(

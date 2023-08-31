@@ -96,7 +96,6 @@ def main(args):
     np.random.seed(args.seed)
     random.seed(args.seed)
 
-    # TODO Baseline training
 
     if args.botnet_pretrain == botnet_pretrain:
         my = 0
@@ -215,18 +214,16 @@ def main(args):
                         dpm_checkpoints=finetuned_model_path,
                         num_classes=args.num_classes,
                         train_dataset=train_loader,
-                        cuda=args.device_num,
-                        K=args.k,
-                        my=my
+                        device=args.ret_device,
+                        K=args.k
                     )
                 else:
                     model = RetIQANet(
                         dpm_checkpoints=finetuned_model_path,
                         num_classes=args.pretrain_classes,
                         train_dataset=train_loader,
-                        cuda=args.device_num,
-                        K=args.k,
-                        my=my
+                        device=args.ret_device,
+                        K=args.k
                     )
             # How do we retrieve from the DB?
             # if one-stage our 2k approach
@@ -236,22 +233,19 @@ def main(args):
                         dpm_checkpoints=finetuned_model_path,
                         num_classes=args.num_classes,
                         train_dataset=train_loader,
-                        cuda=args.device_num,
-                        K=args.k,
-                        my=my
+                        device=args.ret_device,
+                        K=args.k
                     )
                 else:
                     model = NoRefRetIQANet(
                         dpm_checkpoints=finetuned_model_path,
                         num_classes=args.pretrain_classes,
                         train_dataset=train_loader,
-                        cuda=args.device_num,
-                        K=args.k,
-                        my=my
+                        device=args.ret_device,
+                        K=args.k
                     )
-            device = f"cuda:{args.device_num}"
             for ycbcr, rgb, _, y in test_loader:
-                res = model(ycbcr.to(device), rgb.to(device))
+                res = model(ycbcr.to(args.ret_device), rgb.to(args.ret_device))
                 gr_trs.append(y['metric'])
                 r_s.append(res)
         # should we use baseline: TReS, Hyperiqa, etc. ?
@@ -265,7 +259,7 @@ def main(args):
             backbone_config.num_encoder_layerst = 2
             backbone_config.dim_feedforwardt = 64
             backbone_config.ckpt = args.baseline_pretrain
-            backbone_config.cuda = args.backbone_device_num
+            backbone_config.device = args.backbone_device
             # For RetIQANet
             ret_config = argparse.Namespace()
             ret_config.dpm_checkpoints = finetuned_model_path
@@ -274,9 +268,8 @@ def main(args):
             else:
                 ret_config.num_classes = args.pretrain_classes
             ret_config.train_dataset = train_loader
-            ret_config.cuda = args.device_num
+            ret_config.device = args.ret_device
             ret_config.K = 9
-            ret_config.my = my
 
             model = AkimboNet(
                 ret_config=ret_config,
@@ -284,8 +277,8 @@ def main(args):
                 setup=args.setup
             )
 
-            device_ret = f"cuda:{ret_config.cuda}"
-            device_base = f"cuda:{backbone_config.cuda}"
+            device_ret = args.ret_device
+            device_base = args.backbone_device
             for ycbcr, rgb_1, rgb_2, y in test_loader:
                 res = model(
                     ycbcr.to(device_ret),

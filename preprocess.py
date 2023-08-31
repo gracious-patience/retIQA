@@ -13,7 +13,7 @@ img_num = {
         'csiq':     list(range(0, 30)),
         'kadid10k': list(range(0, 80)),
         'tid2013':  list(range(0, 25)),
-        'koniq10k':    list(range(0, 10073)),
+        'koniq':    list(range(0, 10073)),
         'spaq':     list(range(0, 11125))
         }
 
@@ -76,7 +76,7 @@ def load_data(args):
         ])
 
         df = pd.read_csv(args.csv_path)
-        train, test = train_test_split(df['reference'].unique(), test_size=0.2, random_state=args.seed)
+        train, test = train_test_split(df['reference'].unique()[:-1], test_size=0.2, random_state=args.seed)
         train_dataset = DistortedKadid10k(
             refs=train,
             img_dir=args.data_path,
@@ -197,7 +197,7 @@ def load_data2(args):
         )
     ])
     backbone_transform = transforms.Compose([
-        transforms.CenterCrop(size=224),
+        transforms.RandomCrop(size=224),
         transforms.ToTensor(),
         transforms.Normalize(
             mean=(0.485, 0.456, 0.406),
@@ -208,13 +208,14 @@ def load_data2(args):
     if args.dataset == "csiq":
         df = pd.read_csv(args.csv_path)
         train, test = train_test_split(df['image'].unique(), test_size=0.2, random_state=args.seed)
+
         train_dataset = CSIQ(
             refs=train,
             img_dir=args.data_path,
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=transforms.ToTensor(),
+            rgb_transform=None,
             backbone_transform=None,
             type="train"
         )
@@ -229,17 +230,17 @@ def load_data2(args):
             type="test",
             patches=args.patches
         )
-
     elif args.dataset == "kadid10k":
         df = pd.read_csv(args.csv_path)
-        train, test = train_test_split(df['reference'].unique(), test_size=0.2, random_state=args.seed)
+        train, test = train_test_split(df['reference'].unique()[:-1], test_size=0.2, random_state=args.seed)
+
         train_dataset = DistortedKadid10k(
             refs=train,
             img_dir=args.data_path,
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=transforms.ToTensor(),
+            rgb_transform=None,
             backbone_transform=None,
             type="train"
         )
@@ -254,17 +255,17 @@ def load_data2(args):
             type="test",
             patches=args.patches
         )
-
     elif args.dataset == "tid2013":
         df = pd.read_csv(args.csv_path)
         train, test = train_test_split(df['ref'].unique(), test_size=0.2, random_state=args.seed)
+
         train_dataset = DistortedTid2013(
             refs=train,
             img_dir=args.data_path,
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=transforms.ToTensor(),
+            rgb_transform=None,
             backbone_transform=None,
             type="train"
         )
@@ -279,8 +280,7 @@ def load_data2(args):
             type="test",
             patches=args.patches
         )
-    elif args.dataset == "koniq10k":
-
+    elif args.dataset == "koniq":
         total_num_images = img_num[args.dataset]
         train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
 
@@ -289,7 +289,7 @@ def load_data2(args):
             img_dir=args.data_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=transforms.ToTensor(),
+            rgb_transform=None,
             backbone_transform=None,
             type="train"
         )
@@ -306,28 +306,13 @@ def load_data2(args):
     elif args.dataset == "spaq":
         total_num_images = img_num[args.dataset]
         train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
-        rgb_transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=(0.485, 0.456, 0.406),
-                std=(0.229, 0.224, 0.225)
-            )
-        ])
-        backbone_transform = transforms.Compose([
-            transforms.CenterCrop(size=224),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=(0.485, 0.456, 0.406),
-                std=(0.229, 0.224, 0.225)
-            )
-        ])
 
         train_dataset = Spaq(
             indeces=train_indeces,
             img_dir=args.data_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=transforms.ToTensor(),
+            rgb_transform=None,
             backbone_transform=None,
             type="train"
         )
@@ -350,6 +335,7 @@ def load_data2(args):
                 std=(0.229, 0.224, 0.225)
             )
         ])
+
         train_dataset = Koniq10k(
             img_dir=args.data_path,
             csv_path=args.csv_path,
@@ -656,9 +642,6 @@ class Spaq(Dataset):
         img_info['metric'] = img_info['MOS']
 
         ycbcr = Image.open(img_path).convert('YCbCr')
-        a, b = ycbcr.size
-        minimum = min(a,b)
-        ycbcr = transforms.CenterCrop((minimum, minimum))(ycbcr)
 
         if self.ycbcr_transform:
             ycbcr = self.ycbcr_transform(ycbcr)
@@ -667,7 +650,6 @@ class Spaq(Dataset):
             return ycbcr, img_info
 
         rgb = Image.open(img_path)
-        rgb = transforms.CenterCrop((minimum, minimum))(rgb)
         if self.rgb_transform:
             rgb_1 = self.rgb_transform(rgb)
         if self.backbone_transform:

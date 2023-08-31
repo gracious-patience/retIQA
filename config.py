@@ -40,6 +40,8 @@ def load_config():
     parser.add_argument('--botnet_pretrain', type=str, default=None, help='botnet pretrain path')
     parser.add_argument('--baseline_pretrain', type=str, default=None, help='baseline (TReS, HyperIQA, etc.) pretrain path')
     parser.add_argument('--device_num', type=int, default=1)
+    parser.add_argument('--ret_device', type=str, default="cpu", help='device for retrieval module')
+    parser.add_argument('--backbone_device', type=str, default="cpu", help='device for backbone module')
     parser.add_argument('--backbone_device_num', type=int, default=1)
     parser.add_argument('--gradient_clip', type=float, default=2.)
     parser.add_argument('--logging_path', type=str, default=None, help='path to where store the results')

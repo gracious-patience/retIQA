@@ -215,6 +215,44 @@ class Koniq_10kFolder(data.Dataset):
         length = len(self.samples)
         return length
     
+class BigKoniq_10kFolder(data.Dataset):
+
+    def __init__(self, root, index, transform, patch_num):
+        imgname = []
+        mos_all = []
+        csv_file = os.path.join(root, 'koniq10k_scores_and_distributions.csv')
+        with open(csv_file) as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                imgname.append(row['image_name'])
+                mos = np.array(float(row['MOS_zscore'])).astype(np.float32)
+                mos_all.append(mos)
+
+        sample = []
+        for i, item in enumerate(index):
+            for aug in range(patch_num):
+                sample.append((os.path.join(root, '1024x768', imgname[item]), mos_all[item]))
+
+        self.samples = sample
+        self.transform = transform
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        path, target = self.samples[index]
+        sample = pil_loader(path)
+        sample = self.transform(sample)
+        return sample, target
+
+    def __len__(self):
+        length = len(self.samples)
+        return length
+    
 class SpaqFolder(data.Dataset):
 
     def __init__(self, root, index, transform, patch_num):
