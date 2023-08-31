@@ -80,6 +80,7 @@ do
     exp1="--model finetune_botnet50 --finetune 0 --retrieve 1 --ret_tr resize --num_iters 1 --img_width 288 --img_height 384 --num_classes $my_botnet_pretrain_classes --pretrain_classes $my_botnet_pretrain_classes --num_heads 16 --dataset spaq --data_path $spaq_data_path --batch_size 96 --batch_size2 8 --num_workers 12 --lr 0.005 --seed $i --csv_path $spaq_csv_path --botnet_pretrain $my_botnet_pretrain --baseline_pretrain ${tres_save_path}spaq_1_${i}/sv/bestmodel_1_${i} --device_num $cuda --backbone_device $backbone_device --retrieval_device $retrieval_device --logging_path $logging_path --k 9 --aggregation averaging --epochs 30 --baseline no --setup no_reference --patches 1"
     python3 main.py $exp1
 done
+
 # # live-itw exps
 # for i in {1..1}
 # do

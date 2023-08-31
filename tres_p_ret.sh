@@ -30,10 +30,8 @@ csiq_csv_path="/home/sharfikeg/my_files/retIQA/csiq/csiq_info.csv"
 csiq_num_classes=30
 
 koniq10k_data_path="/home/s-kastryulin/data/koniq10k/512x384/"
-# koniq10k_csv_path="/home/sharfikeg/my_files/retIQA/koniq10k_extra_info.csv"
 # koniq10k_data_path="/home/s-kastryulin/data/koniq10k/1024x768/"
 koniq10k_csv_path="/home/s-kastryulin/data/koniq10k/koniq10k_info.csv"
-# koniq10k_tres_pretrain="/home/sharfikeg/my_files/retIQA/dc_ret/DistorsionFeatureExtractor/TReS/pretrained_models/koniq/bestmodel_1_2021"
 
 spaq_data_path="/extra_disk_1/sharfikeg/spaq/TestImage/"
 spaq_csv_path="/extra_disk_1/sharfikeg/spaq/spaq_info.csv"
