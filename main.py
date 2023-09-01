@@ -11,7 +11,7 @@ import os
 from config import load_config
 from preprocess import load_data, load_data2
 from BoTNet import botnet
-from RetIQANet import RetIQANet, NoRefRetIQANet, AkimboNet
+from RetIQANet import RetIQANet, NoRefRetIQANet, AkimboNet, ConcatNoRefRetIQANet
 import torchvision.models as models
 from scipy import stats
 import time
@@ -244,6 +244,25 @@ def main(args):
                         device=args.ret_device,
                         K=args.k
                     )
+            # How do we retrieve from the DB?
+            # if one-stage our 1k approach
+            elif args.setup == "concat_no_reference":
+                if args.finetune:
+                    model = ConcatNoRefRetIQANet(
+                        dpm_checkpoints=finetuned_model_path,
+                        num_classes=args.num_classes,
+                        train_dataset=train_loader,
+                        device=args.ret_device,
+                        K=args.k
+                    )
+                else:
+                    model = ConcatNoRefRetIQANet(
+                        dpm_checkpoints=finetuned_model_path,
+                        num_classes=args.pretrain_classes,
+                        train_dataset=train_loader,
+                        device=args.ret_device,
+                        K=args.k
+                    )
             for ycbcr, rgb, _, y in test_loader:
                 res = model(ycbcr.to(args.ret_device), rgb.to(args.ret_device))
                 gr_trs.append(y['metric'])
@@ -260,6 +279,7 @@ def main(args):
             backbone_config.dim_feedforwardt = 64
             backbone_config.ckpt = args.baseline_pretrain
             backbone_config.device = args.backbone_device
+            backbone_config.aggregation = args.aggregation
             # For RetIQANet
             ret_config = argparse.Namespace()
             ret_config.dpm_checkpoints = finetuned_model_path
@@ -270,6 +290,7 @@ def main(args):
             ret_config.train_dataset = train_loader
             ret_config.device = args.ret_device
             ret_config.K = 9
+            ret_config.weighted = True
 
             model = AkimboNet(
                 ret_config=ret_config,
