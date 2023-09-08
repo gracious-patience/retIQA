@@ -224,7 +224,7 @@ class NoRefRetIQANet(nn.Module):
         values_dst, sorted_dst_cos = values_dst[::,:self.K], sorted_dst_cos[::,:self.K]
 
         result = []
-        # retrieved_result = []
+        retrieved_result = []
         # ret_sems = []
         # ret_dsts = []
         for j in range(f_distorsion.shape[0]):
@@ -243,11 +243,11 @@ class NoRefRetIQANet(nn.Module):
                 # small_ret_sems.append(self.semantic_features[sorted_sem_cos[j][m].item()])
                 # small_ret_dsts.append(self.distorsion_features[sorted_dst_cos[j][m].item()])
             result.append(statistics.mean(small_res))
-            # retrieved_result.append(torch.tensor(small_res))
+            retrieved_result.append(torch.tensor(small_res))
             # ret_sems.append(torch.stack(small_ret_sems))
             # ret_dsts.append(torch.stack(small_ret_dsts))
 
-        return torch.tensor(result) #, torch.stack(retrieved_result), f_content, f_distorsion, torch.stack(ret_sems), torch.stack(ret_dsts)
+        return torch.tensor(result) , torch.stack(retrieved_result) #, f_content, f_distorsion, torch.stack(ret_sems), torch.stack(ret_dsts)
 
 class ConcatNoRefRetIQANet(nn.Module):
     def __init__(self, dpm_checkpoints, num_classes, train_dataset, device="cpu", K=9, weighted=True):
@@ -454,8 +454,17 @@ class AkimboNet(nn.Module):
                 ret_config.device,
                 ret_config.K
             )
-        elif setup == "no_reference" or setup == "concat_no_reference":
+        elif setup == "concat_no_reference":
             self.ret_module = ConcatNoRefRetIQANet(
+                ret_config.dpm_checkpoints,
+                ret_config.num_classes,
+                ret_config.train_dataset,
+                ret_config.device,
+                ret_config.K,
+                ret_config.weighted
+            )
+        elif setup == "no_reference":
+            self.ret_module = NoRefRetIQANet(
                 ret_config.dpm_checkpoints,
                 ret_config.num_classes,
                 ret_config.train_dataset,

@@ -16,7 +16,7 @@ class DataLoader(object):
 		self.batch_size = batch_size
 		self.istrain = istrain
 
-		if (dataset == 'live') | (dataset == 'csiq') | (dataset == 'tid2013') | (dataset == 'clive')| (dataset == 'kadid10k'):
+		if (dataset == 'live') | (dataset == 'csiq') | (dataset == 'tid2013') | (dataset == 'clive')| (dataset == 'kadid10k') | (dataset == 'pipal'):
 			if istrain:
 				transforms = torchvision.transforms.Compose([
 					torchvision.transforms.RandomHorizontalFlip(),
@@ -49,6 +49,21 @@ class DataLoader(object):
 					torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406),
 													 std=(0.229, 0.224, 0.225))])
 		elif dataset == 'spaq':
+			if istrain:
+				transforms = torchvision.transforms.Compose([
+					torchvision.transforms.RandomHorizontalFlip(),
+					torchvision.transforms.RandomVerticalFlip(),
+					torchvision.transforms.RandomCrop(size=patch_size),
+					torchvision.transforms.ToTensor(),
+					torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406),
+													 std=(0.229, 0.224, 0.225))])
+			else:
+				transforms = torchvision.transforms.Compose([
+					torchvision.transforms.RandomCrop(size=patch_size),
+					torchvision.transforms.ToTensor(),
+					torchvision.transforms.Normalize(mean=(0.485, 0.456, 0.406),
+														std=(0.229, 0.224, 0.225))])
+		elif dataset == 'biq':
 			if istrain:
 				transforms = torchvision.transforms.Compose([
 					torchvision.transforms.RandomHorizontalFlip(),
@@ -109,6 +124,12 @@ class DataLoader(object):
 		elif dataset == 'spaq':
 			self.data = folders.SpaqFolder(
 				root=path, index=img_indx, transform=transforms, patch_num=patch_num)	
+		elif dataset == 'biq':
+			self.data = folders.BiqFolder(
+				root=path, index=img_indx, transform=transforms, patch_num=patch_num)
+		elif dataset == 'pipal':
+			self.data = folders.PipalFolder(
+				root=path, index=img_indx, transform=transforms, patch_num=patch_num)
 
 	def get_data(self):
 		if self.istrain:

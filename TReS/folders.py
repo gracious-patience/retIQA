@@ -1,4 +1,4 @@
-
+import pandas as pd
 import torch.utils.data as data
 import torchvision.transforms as T
 from PIL import Image
@@ -293,6 +293,45 @@ class SpaqFolder(data.Dataset):
     def __len__(self):
         length = len(self.samples)
         return length
+    
+class BiqFolder(data.Dataset):
+
+    def __init__(self, root, index, transform, patch_num):
+        imgname = []
+        mos_all = []
+        csv_file = os.path.join(root, 'biq_info.csv')
+        with open(csv_file) as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                imgname.append(row['Image Name'])
+                mos = np.array(float(row['MOS'])).astype(np.float32)
+                mos_all.append(mos)
+
+        sample = []
+        for i, item in enumerate(index):
+            for aug in range(patch_num):
+                sample.append((os.path.join(root, 'Images', imgname[item]), mos_all[item]))
+
+        self.samples = sample
+        self.transform = transform
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        path, target = self.samples[index]
+        sample = pil_loader(path)
+
+        sample = self.transform(sample)
+        return sample, target
+
+    def __len__(self):
+        length = len(self.samples)
+        return length
 
 
 class FBLIVEFolder(data.Dataset):
@@ -393,8 +432,6 @@ class Kadid10k(data.Dataset):
         # txtpath = os.path.join(root, 'dmos.txt')
         # fh = open(txtpath, 'r')
 
-
-
         imgnames = []
         target = []
         refnames_all = []
@@ -425,6 +462,39 @@ class Kadid10k(data.Dataset):
             for j, item in enumerate(train_sel):
                 for aug in range(patch_num):
                     sample.append((os.path.join(root, 'distorted_images', imgnames[item]), labels[item]))
+        self.samples = sample
+        self.transform = transform
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        path, target = self.samples[index]
+        sample = pil_loader(path)
+        sample = self.transform(sample)
+        return sample, target
+
+    def __len__(self):
+        length = len(self.samples)
+        return length
+    
+class PipalFolder(data.Dataset):
+
+    def __init__(self, root, index, transform, patch_num):
+        self.df = pd.read_csv(os.path.join(root, 'pipal_info.csv'))
+        ref_names = self.df["hq_name"].unique()
+        dfs = [self.df[self.df["hq_name"] == ref_names[ref]] for ref in index]
+        self.df = pd.concat(dfs)
+        sample = []
+
+        for _, row in self.df.iterrows():
+            for _ in range(patch_num):
+                sample.append((os.path.join(root, 'Train_Dist', row['dist_name']), np.array(row['elo_score'])  ))
+
         self.samples = sample
         self.transform = transform
 

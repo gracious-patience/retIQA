@@ -9,7 +9,7 @@ sys.path.append("/home/sharfikeg/my_files/retIQA/dc_ret/DistorsionFeatureExtract
 
 import os
 from config import load_config
-from preprocess import load_data, load_data2
+from preprocess import load_data, load_train_test_val_data
 from BoTNet import botnet
 from RetIQANet import RetIQANet, NoRefRetIQANet, AkimboNet, ConcatNoRefRetIQANet
 import torchvision.models as models
@@ -197,7 +197,7 @@ def main(args):
     # 2 Image Quality Assessment with retrieval part
     if args.retrieve:
         # dataloaders for retrieval-augmented setup
-        train_loader, test_loader = load_data2(args)
+        train_loader, val_loader, test_loader = load_train_test_val_data(args)
 
         # lists for results
         r_s = []
@@ -253,7 +253,8 @@ def main(args):
                         num_classes=args.num_classes,
                         train_dataset=train_loader,
                         device=args.ret_device,
-                        K=args.k
+                        K=args.k,
+                        weighted=False
                     )
                 else:
                     model = ConcatNoRefRetIQANet(
@@ -261,10 +262,11 @@ def main(args):
                         num_classes=args.pretrain_classes,
                         train_dataset=train_loader,
                         device=args.ret_device,
-                        K=args.k
+                        K=args.k,
+                        weighted=False
                     )
             for ycbcr, rgb, _, y in test_loader:
-                res = model(ycbcr.to(args.ret_device), rgb.to(args.ret_device))
+                res, _ = model(ycbcr.to(args.ret_device), rgb.to(args.ret_device))
                 gr_trs.append(y['metric'])
                 r_s.append(res)
         # should we use baseline: TReS, Hyperiqa, etc. ?
@@ -289,8 +291,8 @@ def main(args):
                 ret_config.num_classes = args.pretrain_classes
             ret_config.train_dataset = train_loader
             ret_config.device = args.ret_device
-            ret_config.K = 9
-            ret_config.weighted = True
+            ret_config.K = args.k
+            ret_config.weighted = False
 
             model = AkimboNet(
                 ret_config=ret_config,

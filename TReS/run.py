@@ -29,9 +29,10 @@ def main(config,device):
         'kadid10k': config.datapath,
         'clive':    config.datapath,
         'koniq':    config.datapath,
-        'big_koniq':config.datapath,
         'fblive':   config.datapath,
-        'spaq':     config.datapath
+        'spaq':     config.datapath,
+        'biq':      config.datapath,
+        'pipal':    config.datapath
         }
 
     img_num = {
@@ -41,9 +42,10 @@ def main(config,device):
         'tid2013':  list(range(0, 25)),
         'clive':    list(range(0, 1162)),
         'koniq':    list(range(0, 10073)),
-        'big_koniq':    list(range(0, 10073)),
         'fblive':   list(range(0, 39810)),
         'spaq':     list(range(0, 11125)),
+        'biq':      list(range(0, 11989)),
+        'pipal':    list(range(0, 200))
         }
     
 
@@ -54,6 +56,7 @@ def main(config,device):
     
     SavePath = config.svpath
     svPath = SavePath+ config.dataset + '_' + str(config.vesion)+'_'+str(config.seed)+'/'+'sv'
+    print(svPath)
     os.makedirs(svPath, exist_ok=True)
         
     

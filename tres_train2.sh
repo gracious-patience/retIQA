@@ -39,7 +39,7 @@ spaq_csv_path="/extra_disk_1/sharfikeg/spaq/spaq_info.csv"
 biq_data_path="/home/sharfikeg/my_files/extra_disk_1/BIQ2021/Images/"
 biq_csv_path="/home/sharfikeg/my_files/extra_disk_1/BIQ2021/biq_info.csv"
 
-pipal_data_path="/home/sharfikeg/my_files/extra_disk_1/pipal/train/Train_Dist/"
+pipal_data_path="/extra_disk_1/sharfikeg/pipal/train/Train_Dist/"
 pipal_ref_path="/home/sharfikeg/my_files/extra_disk_1/pipal/train/Train_Ref/"
 pipal_csv_path="/home/sharfikeg/my_files/extra_disk_1/pipal/train/pipal_info.csv"
 
@@ -48,13 +48,17 @@ liveitw_train_data_path="/home/s-kastryulin/data/koniq10k/1024x768/"
 liveitw_train_csv_path="/home/sharfikeg/my_files/retIQA/liveitw_info.csv"
 liveitw_test_csv_path="/home/sharfikeg/my_files/retIQA/liveitw_test_info.csv"
 
-# biq exps
+# # biq exps
+# for i in {1..5}
+# do
+#     OMP_NUM_THREADS=12 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 53  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/sharfikeg/my_files/extra_disk_1/BIQ2021' --dataset 'biq' --seed $i --vesion 1
+# done
+
+# pipal exps
 for i in {1..5}
 do
-    OMP_NUM_THREADS=12 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 53  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/sharfikeg/my_files/extra_disk_1/BIQ2021' --dataset 'biq' --seed $i --vesion 1
+    OMP_NUM_THREADS=12 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 53  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $cuda --datapath '/extra_disk_1/sharfikeg/pipal/train' --dataset 'pipal' --seed $i --vesion 1
 done
-
-
 
 # # csiq exps
 # for i in {1..5}

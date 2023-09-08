@@ -14,7 +14,9 @@ img_num = {
         'kadid10k': list(range(0, 80)),
         'tid2013':  list(range(0, 25)),
         'koniq':    list(range(0, 10073)),
-        'spaq':     list(range(0, 11125))
+        'spaq':     list(range(0, 11125)),
+        'biq':      list(range(0, 11989)),
+        'pipal':    list(range(0, 200))
         }
 
 
@@ -208,7 +210,7 @@ def load_data2(args):
     if args.dataset == "csiq":
         df = pd.read_csv(args.csv_path)
         train, test = train_test_split(df['image'].unique(), test_size=0.2, random_state=args.seed)
-
+        
         train_dataset = CSIQ(
             refs=train,
             img_dir=args.data_path,
@@ -255,6 +257,7 @@ def load_data2(args):
             type="test",
             patches=args.patches
         )
+
     elif args.dataset == "tid2013":
         df = pd.read_csv(args.csv_path)
         train, test = train_test_split(df['ref'].unique(), test_size=0.2, random_state=args.seed)
@@ -265,7 +268,7 @@ def load_data2(args):
             ref_dir=args.ref_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=None,
+            rgb_transform=transforms.ToTensor(),
             backbone_transform=None,
             type="train"
         )
@@ -289,7 +292,7 @@ def load_data2(args):
             img_dir=args.data_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=None,
+            rgb_transform=transforms.ToTensor(),
             backbone_transform=None,
             type="train"
         )
@@ -312,11 +315,34 @@ def load_data2(args):
             img_dir=args.data_path,
             csv_path=args.csv_path,
             ycbcr_transform=ycbcr_transform,
-            rgb_transform=None,
+            rgb_transform=transforms.ToTensor(),
             backbone_transform=None,
             type="train"
         )
         test_dataset = Spaq(
+            indeces=test_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "biq":
+        total_num_images = img_num[args.dataset]
+        train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
+
+        train_dataset = Biq(
+            indeces=train_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = Biq(
             indeces=test_indeces,
             img_dir=args.data_path,
             csv_path=args.csv_path,
@@ -335,7 +361,6 @@ def load_data2(args):
                 std=(0.229, 0.224, 0.225)
             )
         ])
-
         train_dataset = Koniq10k(
             img_dir=args.data_path,
             csv_path=args.csv_path,
@@ -354,10 +379,663 @@ def load_data2(args):
             patches=args.patches
         )
 
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=False, num_workers=12)
+    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=False, num_workers=12)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size2, shuffle=False, num_workers=args.num_workers)
 
     return train_loader, test_loader
+
+def load_train_test_val_data(args):
+    ycbcr_transform = transforms.Compose([
+        transforms.Resize((288, 384)),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=(0.448, 0.483, 0.491),
+            std=(0.248, 0.114, 0.106)
+        )
+    ])
+    rgb_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=(0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225)
+        )
+    ])
+    backbone_transform = transforms.Compose([
+        transforms.RandomCrop(size=224),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=(0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225)
+        )
+    ])
+
+    if args.dataset == "csiq":
+        df = pd.read_csv(args.csv_path)
+        train, test = train_test_split(df['image'].unique(), test_size=0.2, random_state=args.seed)
+        val, test = train_test_split(test, test_size=0.5, random_state=args.seed)
+        
+        train_dataset = CSIQ(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=None,
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = CSIQ(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        val_dataset = CSIQ(
+            refs=val,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "pipal":
+        df = pd.read_csv(args.csv_path)
+        train, test = train_test_split(df['hq_name'].unique(), test_size=0.2, random_state=args.seed)
+        val, test = train_test_split(test, test_size=0.5, random_state=args.seed)
+        
+        train_dataset = Pipal(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=None,
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = Pipal(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        val_dataset = Pipal(
+            refs=val,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "kadid10k":
+        df = pd.read_csv(args.csv_path)
+        train, test = train_test_split(df['reference'].unique()[:-1], test_size=0.2, random_state=args.seed)
+        val, test = train_test_split(test, test_size=0.5, random_state=args.seed)
+
+        train_dataset = DistortedKadid10k(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=None,
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = DistortedKadid10k(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        val_dataset = DistortedKadid10k(
+            refs=val,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+
+    elif args.dataset == "tid2013":
+        df = pd.read_csv(args.csv_path)
+        train, test = train_test_split(df['ref'].unique(), test_size=0.2, random_state=args.seed)
+        val, test = train_test_split(test, test_size=0.5, random_state=args.seed)
+
+        train_dataset = DistortedTid2013(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = DistortedTid2013(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        val_dataset = DistortedTid2013(
+            refs=val,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "koniq":
+        total_num_images = img_num[args.dataset]
+        train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
+        val_indeces, test_indeces = train_test_split(test_indeces, test_size=0.5, random_state=args.seed)
+
+        train_dataset = Koniq10k(
+            indeces=train_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = Koniq10k(
+            indeces=test_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        val_dataset = Koniq10k(
+            indeces=val_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "spaq":
+        total_num_images = img_num[args.dataset]
+        train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
+        val_indeces, test_indeces = train_test_split(test_indeces, test_size=0.5, random_state=args.seed)
+
+        train_dataset = Spaq(
+            indeces=train_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = Spaq(
+            indeces=test_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        val_dataset = Spaq(
+            indeces=val_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "biq":
+        total_num_images = img_num[args.dataset]
+        train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
+        val_indeces, test_indeces = train_test_split(test_indeces, test_size=0.5, random_state=args.seed)
+
+        train_dataset = Biq(
+            indeces=train_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = Biq(
+            indeces=test_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        val_dataset = Biq(
+            indeces=val_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=12)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size2, shuffle=False, num_workers=args.num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size2, shuffle=False, num_workers=args.num_workers)
+
+    return train_loader, val_loader, test_loader
+
+def load_train_train_val_test_data(args):
+    ycbcr_transform = transforms.Compose([
+        transforms.Resize((288, 384)),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=(0.448, 0.483, 0.491),
+            std=(0.248, 0.114, 0.106)
+        )
+    ])
+    rgb_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=(0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225)
+        )
+    ])
+    backbone_transform = transforms.Compose([
+        transforms.RandomCrop(size=224),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=(0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225)
+        )
+    ])
+
+    if args.dataset == "csiq":
+        df = pd.read_csv(args.csv_path)
+        train, test = train_test_split(df['image'].unique(), test_size=0.2, random_state=args.seed)
+        val, test = train_test_split(test, test_size=0.5, random_state=args.seed)
+        small_train, small_val = train_test_split(val, test_size=0.2, random_state=args.seed)
+        
+        train_dataset = CSIQ(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=None,
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = CSIQ(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+
+        small_train_dataset = CSIQ(
+            refs=small_train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+
+        small_val_dataset = CSIQ(
+            refs=small_val,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "pipal":
+        df = pd.read_csv(args.csv_path)
+        train, test = train_test_split(df['hq_name'].unique(), test_size=0.2, random_state=args.seed)
+        val, test = train_test_split(test, test_size=0.5, random_state=args.seed)
+        small_train, small_val = train_test_split(val, test_size=0.2, random_state=args.seed)
+        
+        train_dataset = Pipal(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=None,
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = Pipal(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        small_train_dataset = Pipal(
+            refs=small_train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+
+        small_val_dataset = Pipal(
+            refs=small_val,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+
+    elif args.dataset == "kadid10k":
+        df = pd.read_csv(args.csv_path)
+        train, test = train_test_split(df['reference'].unique()[:-1], test_size=0.2, random_state=args.seed)
+        val, test = train_test_split(test, test_size=0.5, random_state=args.seed)
+        small_train, small_val = train_test_split(val, test_size=0.2, random_state=args.seed)
+
+        train_dataset = DistortedKadid10k(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=None,
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = DistortedKadid10k(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        small_train_dataset = DistortedKadid10k(
+            refs=small_train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        small_val_dataset = DistortedKadid10k(
+            refs=small_val,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+
+    elif args.dataset == "tid2013":
+        df = pd.read_csv(args.csv_path)
+        train, test = train_test_split(df['ref'].unique(), test_size=0.2, random_state=args.seed)
+        val, test = train_test_split(test, test_size=0.5, random_state=args.seed)
+        small_train, small_val = train_test_split(val, test_size=0.2, random_state=args.seed)
+
+
+        train_dataset = DistortedTid2013(
+            refs=train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = DistortedTid2013(
+            refs=test,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        small_train_dataset = DistortedTid2013(
+            refs=small_train,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        small_val_dataset = DistortedTid2013(
+            refs=small_val,
+            img_dir=args.data_path,
+            ref_dir=args.ref_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "koniq":
+        total_num_images = img_num[args.dataset]
+        train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
+        val_indeces, test_indeces = train_test_split(test_indeces, test_size=0.5, random_state=args.seed)
+        small_train_indeces, small_val_indeces = train_test_split(val_indeces, test_size=0.2, random_state=args.seed)
+
+        train_dataset = Koniq10k(
+            indeces=train_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = Koniq10k(
+            indeces=test_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        small_train_dataset = Koniq10k(
+            indeces=small_train_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        small_val_dataset = Koniq10k(
+            indeces=small_val_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "spaq":
+        total_num_images = img_num[args.dataset]
+        train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
+        val_indeces, test_indeces = train_test_split(test_indeces, test_size=0.5, random_state=args.seed)
+        small_train_indeces, small_val_indeces = train_test_split(val_indeces, test_size=0.2, random_state=args.seed)
+
+        train_dataset = Spaq(
+            indeces=train_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = Spaq(
+            indeces=test_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        small_train_dataset = Spaq(
+            indeces=small_train_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        small_val_dataset = Spaq(
+            indeces=small_val_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    elif args.dataset == "biq":
+        total_num_images = img_num[args.dataset]
+        train_indeces, test_indeces = train_test_split(total_num_images, test_size=0.2, random_state=args.seed)
+        val_indeces, test_indeces = train_test_split(test_indeces, test_size=0.5, random_state=args.seed)
+        small_train_indeces, small_val_indeces = train_test_split(val_indeces, test_size=0.2, random_state=args.seed)
+
+        train_dataset = Biq(
+            indeces=train_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=transforms.ToTensor(),
+            backbone_transform=None,
+            type="train"
+        )
+        test_dataset = Biq(
+            indeces=test_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        small_train_dataset = Biq(
+            indeces=small_train_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+        small_val_dataset = Biq(
+            indeces=small_val_indeces,
+            img_dir=args.data_path,
+            csv_path=args.csv_path,
+            ycbcr_transform=ycbcr_transform,
+            rgb_transform=rgb_transform,
+            backbone_transform=backbone_transform,
+            type="test",
+            patches=args.patches
+        )
+    
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=12)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size2, shuffle=False, num_workers=args.num_workers)
+    small_train_loader = DataLoader(small_train_dataset, batch_size=args.batch_size2, shuffle=False, num_workers=args.num_workers)
+    small_val_loader = DataLoader(small_val_dataset, batch_size=args.batch_size2, shuffle=False, num_workers=args.num_workers)
+
+    return train_loader, small_train_loader, small_val_loader, test_loader
 
 
 class DistortedTid2013(Dataset):
@@ -518,6 +1196,51 @@ class CSIQ(Dataset):
             for _ in range(self.patches):
                 rgb_2.append(self.backbone_transform(rgb))
         return ycbcr, rgb_1, torch.stack(rgb_2), img_info
+    
+class Pipal(Dataset):
+    def __init__(self, refs, img_dir, ref_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train", patches=1):
+        self.img_dir = img_dir
+        self.ref_dir = ref_dir
+        self.ycbcr_transform = ycbcr_transform
+        self.rgb_transform = rgb_transform
+        self.backbone_transform = backbone_transform
+        self.refs = refs
+        self.df = pd.read_csv(csv_path)
+        dfs = [self.df[self.df["hq_name"] == ref] for ref in refs]
+        self.df = pd.concat(dfs)
+        self.len = len(self.df)
+        self.type = type
+        self.patches = patches
+    
+    def __len__(self):
+        return self.len
+    
+    def __getitem__(self, idx):
+        img_info = self.df.iloc[idx].to_dict()
+
+        # 6 = num of dst levels
+        img_path = f"{self.img_dir}{img_info['dist_name']}"
+        
+
+        img_info['pic_path'] = img_path
+        img_info['ref_path'] = f"{self.ref_dir}{img_info['hq_name']}"
+        img_info['metric'] = img_info['elo_score']
+
+        ycbcr = Image.open(img_path).convert('YCbCr')
+        if self.ycbcr_transform:
+            ycbcr = self.ycbcr_transform(ycbcr)
+
+        if self.type == "train":
+            return ycbcr, img_info
+
+        rgb = Image.open(img_path)
+        if self.rgb_transform:
+            rgb_1 = self.rgb_transform(rgb)
+        if self.backbone_transform:
+            rgb_2 = []
+            for _ in range(self.patches):
+                rgb_2.append(self.backbone_transform(rgb))
+        return ycbcr, rgb_1, torch.stack(rgb_2), img_info
 
 class Koniq10k(Dataset):
     def __init__(self, indeces, img_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train", patches=1):
@@ -636,6 +1359,48 @@ class Spaq(Dataset):
 
         # 6 = num of dst levels
         img_path = f"{self.img_dir}{img_info['Image name']}"
+        
+
+        img_info['pic_path'] = img_path
+        img_info['metric'] = img_info['MOS']
+
+        ycbcr = Image.open(img_path).convert('YCbCr')
+
+        if self.ycbcr_transform:
+            ycbcr = self.ycbcr_transform(ycbcr)
+
+        if self.type == "train":
+            return ycbcr, img_info
+
+        rgb = Image.open(img_path)
+        if self.rgb_transform:
+            rgb_1 = self.rgb_transform(rgb)
+        if self.backbone_transform:
+            rgb_2 = []
+            for _ in range(self.patches):
+                rgb_2.append(self.backbone_transform(rgb))
+        return ycbcr, rgb_1, torch.stack(rgb_2), img_info
+    
+class Biq(Dataset):
+    def __init__(self, indeces, img_dir, csv_path, ycbcr_transform=None, rgb_transform=None, backbone_transform=None, type="train", patches=1):
+        self.img_dir = img_dir
+        self.ycbcr_transform = ycbcr_transform
+        self.rgb_transform = rgb_transform
+        self.backbone_transform = backbone_transform
+        self.df = pd.read_csv(csv_path)
+        self.df = self.df.iloc[indeces]
+        self.len = len(self.df)
+        self.type = type
+        self.patches = patches
+    
+    def __len__(self):
+        return self.len
+    
+    def __getitem__(self, idx):
+        img_info = self.df.iloc[idx].to_dict()
+
+        # 6 = num of dst levels
+        img_path = f"{self.img_dir}{img_info['Image Name']}"
         
 
         img_info['pic_path'] = img_path
