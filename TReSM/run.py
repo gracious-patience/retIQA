@@ -20,32 +20,40 @@ print('torch version: {}'.format(torch.__version__))
 
 
 def main(config,device): 
-    os.environ['CUDA_VISIBLE_DEVICES'] = config.gpunum
+    os.environ['CUDA_VISIBLE_DEVICES'] = "0,1,2,3,4,5,6,7"
     
     folder_path = {
-        'live':     config.datapath,
-        'csiq':     config.datapath,
-        'tid2013':  config.datapath,
-        'kadid10k': config.datapath,
-        'clive':    config.datapath,
-        'koniq':    config.datapath,
-        'fblive':   config.datapath,
-        'spaq':     config.datapath,
-        'biq':      config.datapath,
-        'pipal':    config.datapath
+        'live':         config.datapath,
+        'csiq':         config.datapath,
+        'sly_csiq':     config.datapath,
+        'tid2013':      config.datapath,
+        'sly_tid2013':  config.datapath,
+        'kadid10k':     config.datapath,
+        'sly_kadid10k': config.datapath,
+        'clive':        config.datapath,
+        'koniq':        config.datapath,
+        'fblive':       config.datapath,
+        'spaq':         config.datapath,
+        'biq':          config.datapath,
+        'pipal':        config.datapath,
+        'sly_pipal':    config.datapath
         }
 
     img_num = {
-        'live':     list(range(0, 29)),
-        'csiq':     list(range(0, 30)),
-        'kadid10k': list(range(0, 80)),
-        'tid2013':  list(range(0, 25)),
-        'clive':    list(range(0, 1169)),
-        'koniq':    list(range(0, 10073)),
-        'fblive':   list(range(0, 39810)),
-        'spaq':     list(range(0, 11125)),
-        'biq':      list(range(0, 11989)),
-        'pipal':    list(range(0, 200))
+        'live':         list(range(0, 29)),
+        'csiq':         list(range(0, 30)),
+        'sly_csiq':     list(range(0, 30)),
+        'kadid10k':     list(range(0, 80)),
+        'sly_kadid10k': list(range(0, 80)),
+        'tid2013':      list(range(0, 25)),
+        'sly_tid2013':  list(range(0, 25)),
+        'clive':        list(range(0, 1169)),
+        'koniq':        list(range(0, 10073)),
+        'fblive':       list(range(0, 39810)),
+        'spaq':         list(range(0, 11125)),
+        'biq':          list(range(0, 11989)),
+        'pipal':        list(range(0, 200)),
+        'sly_pipal':    list(range(0, 200))
         }
     
 
@@ -55,8 +63,22 @@ def main(config,device):
 
     
     SavePath = config.svpath
-    svPath = SavePath+ config.dataset + '_' + str(config.vesion)+'_'+str(config.seed)+'/'+'sv'
-    print(svPath)
+    if config.finetune:
+        svPath = SavePath+ config.dataset + '_' + str(config.vesion)+'_'+str(config.seed)+'/k_'+str(config.k)+ f'/lr_{config.lr}_lrratio{config.lrratio}' + '/'+'finetune'
+        if config.full_finetune:
+            svPath += '/full_finetune'
+    else:
+        svPath = SavePath+ config.dataset + '_' + str(config.vesion)+'_'+str(config.seed)+ '/k_'+str(config.k)+  f'/lr_{config.lr}_lrratio{config.lrratio}' +'/'+'no_finetune'
+    if config.resume:
+        svPath += '/resume'
+    if config.multi_return:
+        svPath += '/multi_return'
+        if config.multi_ranking:
+            svPath += '/multi_ranking'
+        else:
+            svPath += '/single_ranking'
+    else:
+        svPath += '/single_return'
     os.makedirs(svPath, exist_ok=True)
         
     

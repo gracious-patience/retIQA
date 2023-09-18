@@ -89,17 +89,13 @@ class LIVEChallengeFolder(data.Dataset):
 
     def __init__(self, root, index, transform, patch_num):
 
-        imgpath = scipy.io.loadmat(os.path.join(root, 'Data', 'AllImages_release.mat'))
-        imgpath = imgpath['AllImages_release']
-        imgpath = imgpath[7:1169]
-        mos = scipy.io.loadmat(os.path.join(root, 'Data', 'AllMOS_release.mat'))
-        labels = mos['AllMOS_release'].astype(np.float32)
-        labels = labels[0][7:1169]
-
+        df = pd.read_csv(os.path.join(root, 'clive_info.csv'))
+        df = df.iloc[index]
         sample = []
-        for i, item in enumerate(index):
-            for aug in range(patch_num):
-                sample.append((os.path.join(root, 'Images', imgpath[item][0][0]), labels[item]))
+
+        for _, row in df.iterrows():
+            for _ in range(patch_num):
+                sample.append((os.path.join(root, 'Images', row['image']), np.array(row['mos'])  ))
 
         self.samples = sample
         self.transform = transform

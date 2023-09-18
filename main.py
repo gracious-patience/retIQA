@@ -191,7 +191,7 @@ def main(args):
         finetuned_model_path = os.path.join(f'../{args.model}_{args.dataset}_checkpoints', f'checkpoint_model_best_heads{args.num_heads}.pth')
     else:
         finetuned_model_path = args.botnet_pretrain
-        global_acc = torch.load(finetuned_model_path)['best_acc']
+        global_acc = torch.load(finetuned_model_path, map_location=args.ret_device)['best_acc']
         print("Best acc: ", global_acc)
 
     # 2 Image Quality Assessment with retrieval part

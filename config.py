@@ -43,6 +43,8 @@ def load_config():
     parser.add_argument('--ret_device', type=str, default="cpu", help='device for retrieval module')
     parser.add_argument('--backbone_device', type=str, default="cpu", help='device for backbone module')
     parser.add_argument('--backbone_device_num', type=int, default=1)
+    parser.add_argument('--uni', type=int, default=0)
+    parser.add_argument('--num_seeds', type=int, default=5)
     parser.add_argument('--gradient_clip', type=float, default=2.)
     parser.add_argument('--logging_path', type=str, default=None, help='path to where store the results')
     parser.add_argument('--k', type=int, default=9, help= "Parameter for nearest friends")

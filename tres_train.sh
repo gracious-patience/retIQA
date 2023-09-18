@@ -1,6 +1,6 @@
-cuda=5
-backbone_device="cuda:5"
-retrieval_device="cuda:5"
+cuda=6
+backbone_device="cuda:6"
+retrieval_device="cuda:6"
 botnet_pretrain="/home/sharfikeg/my_files/VIPNet/pretrained_model/botnet_model_best.pth.tar"
 botnet_pretrain_classes=150
 my_botnet_pretrain="/home/sharfikeg/my_files/retIQA/dc_ret/my_botnet_pretrain/checkpoint_model_best_heads16.pth"
@@ -43,24 +43,25 @@ pipal_data_path="/home/sharfikeg/my_files/extra_disk_1/pipal/train/Train_Dist/"
 pipal_ref_path="/home/sharfikeg/my_files/extra_disk_1/pipal/train/Train_Ref/"
 pipal_csv_path="/home/sharfikeg/my_files/extra_disk_1/pipal/train/pipal_info.csv"
 
-liveitw_test_data_path="/home/s-kastryulin/data/LIVE-itW/Images/"
-liveitw_train_data_path="/home/s-kastryulin/data/koniq10k/1024x768/"
-liveitw_train_csv_path="/home/sharfikeg/my_files/retIQA/liveitw_info.csv"
-liveitw_test_csv_path="/home/sharfikeg/my_files/retIQA/liveitw_test_info.csv"
 
-# biq exps
-for i in {1..5}
-do
-    OMP_NUM_THREADS=12 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 53  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/sharfikeg/my_files/extra_disk_1/BIQ2021' --dataset 'biq' --seed $i --vesion 1
-done
-
-
-
-# # csiq exps
+# # biq exps
 # for i in {1..5}
 # do
-#     OMP_NUM_THREADS=12 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 53  --svpath /home/sharfikeg/my_files/extra_disk_1/save_tres_draft/ --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/sharfikeg/my_files/retIQA/csiq' --dataset 'csiq' --seed $i --vesion 1
+#     OMP_NUM_THREADS=12 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 53  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/sharfikeg/my_files/extra_disk_1/BIQ2021' --dataset 'biq' --seed $i --vesion 1
 # done
+
+# # clive exps
+# for i in {1..10}
+# do
+#     OMP_NUM_THREADS=2 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 53  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/s-kastryulin/data/LIVE-itW' --dataset 'clive' --seed $i --vesion 1
+# done
+
+
+# csiq exps
+for i in {4..10}
+do
+    OMP_NUM_THREADS=2 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 53  --svpath /home/sharfikeg/my_files/extra_disk_1/Save_TReS/ --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/sharfikeg/my_files/retIQA/csiq' --dataset 'csiq' --seed $i --vesion 1
+done
 
 # # tid2013 exps
 # for i in {1..5}

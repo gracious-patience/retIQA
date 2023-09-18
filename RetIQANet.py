@@ -6,6 +6,7 @@ import torchvision.transforms as T
 from BoTNet import botnet
 from model import ResNet50
 from TReS.models import Net
+import gc
 import os
 import pandas as pd
 from PIL import Image
@@ -250,7 +251,7 @@ class NoRefRetIQANet(nn.Module):
         return torch.tensor(result) , torch.stack(retrieved_result) #, f_content, f_distorsion, torch.stack(ret_sems), torch.stack(ret_dsts)
 
 class ConcatNoRefRetIQANet(nn.Module):
-    def __init__(self, dpm_checkpoints, num_classes, train_dataset, device="cpu", K=9, weighted=True):
+    def __init__(self, dpm_checkpoints, num_classes, train_dataset, device="cpu", K=9, weighted=True, diffknn=False):
         super(ConcatNoRefRetIQANet, self).__init__()
         # define number of neighbours
         self.K = K
@@ -290,6 +291,8 @@ class ConcatNoRefRetIQANet(nn.Module):
         distorsion_features = []
         semantic_features = []
 
+        
+
         for pic, y in train_dataset:
 
             ret_db['pic_path'] += y['pic_path']
@@ -297,14 +300,18 @@ class ConcatNoRefRetIQANet(nn.Module):
             ret_db['vgg16_path'] += y['vgg16_path']
 
             # save dst_features of each pic
-            dst_features = self.dpm(pic.to(device)).reshape([pic.shape[0], -1]).cpu()
+            dst_features = self.dpm(pic.to(device)).reshape([pic.shape[0], -1])
             distorsion_features.append(dst_features)
+            
 
             for k, vgg_path in enumerate(y['vgg16_path']):
-
-                vgg16_feature_tensor = torch.load(y['vgg16_path'][k], map_location=device)
+                vgg16_feature_tensor = torch.load(
+                    y['vgg16_path'][k],
+                    map_location=device
+                )
                 semantic_features.append(vgg16_feature_tensor.reshape([1, -1]))
-
+                
+        
         self.ret_db = pd.DataFrame(ret_db)
         semantic_features = torch.concat(semantic_features)
         distorsion_features = torch.concat(distorsion_features)
@@ -313,10 +320,27 @@ class ConcatNoRefRetIQANet(nn.Module):
         self.concated_features = torch.concat(
             [
                 (semantic_features/vector_norm(semantic_features, dim=-1).reshape([semantic_features.shape[0], -1])),
-                (distorsion_features/vector_norm(distorsion_features, dim=-1).reshape([distorsion_features.shape[0], -1])).to(device)
+                (distorsion_features/vector_norm(distorsion_features, dim=-1).reshape([distorsion_features.shape[0], -1]))
             ], dim=-1
         ) 
+
+        # faster when not diff-knn
+        self.diffknn = diffknn
+        if not diffknn:
+            self.concated_features = self.concated_features/vector_norm(self.concated_features, dim=-1)[:, None]
+
+
         self.weighted = weighted
+
+        # labels in separate tensor, Nx1
+        self.labels = torch.tensor(ret_db['metric'], device=device).unsqueeze(1)
+
+        # release memory
+        # semantic_features = None
+        # vgg16_feature_tensor = None
+        # gc.collect()
+        # torch.cuda.empty_cache()
+        
 
     def forward(self, ycbcr, rgb_1):
         # calculate semantic features of given rgb images
@@ -332,36 +356,30 @@ class ConcatNoRefRetIQANet(nn.Module):
             [f_content, f_distorsion], dim=1
         )
 
+        if not self.diffknn:
+            f_concat = f_concat/vector_norm(f_concat, dim=-1)[:, None]
 
-        # matrix of scalar products of normed vectors = matrix of cosines
-        sim_cos = f_concat@self.concated_features.T
-        # take top-K indeces
-        values, indices = sim_cos.sort(dim=-1, descending=True)
-        values, indices = values[::,:self.K], indices[::,:self.K]
+            # matrix of scalar products of normed vectors = matrix of cosines
+            sim_cos = (f_concat)@(self.concated_features).T
 
-       
-        result = []
-        retrieved_result = []
-        # ret_sems = []
-        # ret_dsts = []
-        for j in range(f_concat.shape[0]):
-            small_res = []
-            # small_ret = []
-            for m in range(self.K):
-                if self.weighted:
-                    # print(f"Info in sem: weight={values_sem[j][m].item()}, score={self.ret_db.loc[sorted_sem_cos[j][m].item()]['metric']}, multiplied={values_sem[j][m].item() * self.ret_db.loc[sorted_sem_cos[j][m].item()]['metric'] }")
-                    small_res.append(values[j][m].item()/values[j].sum().item() * self.ret_db.loc[indices[j][m].item()]['metric'] )
-                    # print(f"Info in dst: weight={values_dst[j][m].item()}, score={self.ret_db.loc[sorted_dst_cos[j][m].item()]['metric']}, multiplied={values_dst[j][m].item() * self.ret_db.loc[sorted_dst_cos[j][m].item()]['metric'] }")
-                else:
-                    small_res.append(self.ret_db.loc[indices[j][m].item()]['metric'] )
-                    # small_ret.append(self.semantic_features[indices[j][m].item()])
-            result.append(statistics.mean(small_res))
-            retrieved_result.append(torch.tensor(small_res))
-            # ret_sems.append(torch.stack(small_ret_sems))
-            # ret_dsts.append(torch.stack(small_ret_dsts))
+            # take top-K indeces
+            values, indices = sim_cos.sort(dim=-1, descending=True)
+            # indices -> b x k
+            values, indices = values[::,:self.K], indices[::,:self.K]
 
-        return torch.tensor(result) , torch.stack(retrieved_result) #, f_content, f_distorsion, torch.stack(ret_sems), torch.stack(ret_dsts)
+            # one-hot indices -> b x k x N
+            indices = nn.functional.one_hot(indices, num_classes=self.labels.shape[0]).float()
 
+            # b x k x N @ N x 1 -> b x k x 1
+            retrieved_result = indices @ self.labels
+            result = retrieved_result.mean(dim=1)
+
+            # release cuda memory
+            # f_concat = None
+            # gc.collect()
+            # torch.cuda.empty_cache()
+
+            return result.flatten().cpu() , retrieved_result.reshape([retrieved_result.shape[0], -1]).cpu() #, f_content, f_distorsion, torch.stack(ret_sems), torch.stack(ret_dsts)
 
 def SimpleAggro(x, y):
     to_fuse = torch.stack([
