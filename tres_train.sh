@@ -57,14 +57,14 @@ pipal_csv_path="/home/sharfikeg/my_files/extra_disk_1/pipal/train/pipal_info.csv
 # done
 
 
-# csiq exps
-for i in {4..10}
-do
-    OMP_NUM_THREADS=2 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 53  --svpath /home/sharfikeg/my_files/extra_disk_1/Save_TReS/ --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/sharfikeg/my_files/retIQA/csiq' --dataset 'csiq' --seed $i --vesion 1
-done
+# # csiq exps
+# for i in {1..10}
+# do
+#     OMP_NUM_THREADS=2 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 53  --svpath /home/sharfikeg/my_files/extra_disk_1/Save_TReS/ --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/sharfikeg/my_files/retIQA/csiq' --dataset 'csiq' --seed $i --vesion 1
+# done
 
 # # tid2013 exps
-# for i in {1..5}
+# for i in {1..10}
 # do
 #     OMP_NUM_THREADS=54 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 128  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/s-kastryulin/data/tid2013' --dataset 'tid2013' --seed $i --vesion 1
 # done
@@ -75,14 +75,20 @@ done
 #     OMP_NUM_THREADS=54 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 128  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/sharfikeg/my_files/retIQA/kadid10k' --dataset 'kadid10k' --seed $i --vesion 1
 # done
 
-# # koniq10k exps
-# for i in {1..5}
-# do
-#     OMP_NUM_THREADS=54 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 128  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $backbone_cuda --datapath '/home/sharfikeg/my_files/retIQA/koniq10k' --dataset 'koniq' --seed $i --vesion 1
-# done
+# koniq10k exps
+for i in {1..5}
+do
+    OMP_NUM_THREADS=54 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 128  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $cuda --datapath '/home/sharfikeg/my_files/retIQA/koniq10k' --dataset 'koniq' --seed $i --vesion 1
+done
 
-# # spaq exps
-# for i in {1..5}
-# do
-#     OMP_NUM_THREADS=54 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 128  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $backbone_cuda --datapath '/extra_disk_1/sharfikeg/spaq' --dataset 'spaq' --seed $i --vesion 1
-# done
+# pipal exps
+for i in {1..5}
+do
+    OMP_NUM_THREADS=54 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 128  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $cuda --datapath '/extra_disk_1/sharfikeg/pipal/train' --dataset 'pipal' --seed $i --vesion 1
+done
+
+# spaq exps
+for i in {1..5}
+do
+    OMP_NUM_THREADS=54 python $tres_launch_training --num_encoder_layerst 2 --dim_feedforwardt 64 --nheadt 16 --network 'resnet50' --batch_size 128  --svpath $tres_save_path --droplr 1 --epochs 5 --gpunum $cuda --datapath '/extra_disk_1/sharfikeg/spaq' --dataset 'spaq' --seed $i --vesion 1
+done

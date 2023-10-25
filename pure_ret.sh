@@ -10,7 +10,7 @@ tres_save_path="/extra_disk_1/sharfikeg/Save_TReS/"
 tres_launch_training="/home/sharfikeg/my_files/retIQA/dc_ret/DistorsionFeatureExtractor/TReS/run.py"
 tres_batchsize=2
 tres_patches=50
-
+validation=1
 
 tid2013_botnet_finetune="/home/sharfikeg/my_files/retIQA/dc_ret/finetune_botnet50_tid2013_checkpoints/checkpoint_model_best_heads16.pth"
 tid2013_data_path="/home/s-kastryulin/data/tid2013/distorted_images/"

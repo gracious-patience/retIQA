@@ -80,18 +80,23 @@ def main(config,device):
     # test_index = total_num_images[int(round(0.8 * len(total_num_images))):len(total_num_images)]
 
     train_index, test_index = train_test_split(total_num_images, test_size=0.2, random_state=config.seed)
-    
-    
+    val_index, test_index = train_test_split(test_index, test_size=0.5, random_state=config.seed)
+
     imgsTrainPath = svPath + '/' + 'train_index_'+str(config.vesion)+'_'+str(config.seed)+'.json'
+    imgsValPath = svPath + '/' + 'val_index_'+str(config.vesion)+'_'+str(config.seed)+'.json'
     imgsTestPath = svPath + '/' + 'test_index_'+str(config.vesion)+'_'+str(config.seed)+'.json'
+    
 
     with open(imgsTrainPath, 'w') as json_file2:
         json.dump( train_index, json_file2)
-        
+    with open(imgsValPath, 'w') as json_file2:
+        json.dump( val_index, json_file2)
     with open(imgsTestPath, 'w') as json_file2:
         json.dump( test_index, json_file2)
 
-    solver = TReS(config,device, svPath, folder_path[config.dataset], train_index, test_index,Net)
+
+
+    solver = TReS(config, device, svPath, folder_path[config.dataset], train_index, val_index, Net)
     srcc_computed, plcc_computed = solver.train(config.seed,svPath)
     
     
@@ -109,7 +114,7 @@ def main(config,device):
     Dataset = config.dataset
     logger.info(Dataset)
     
-    PrintToLogg = 'Best PLCC: {}, SROCC: {}'.format(plcc_computed,srcc_computed)
+    PrintToLogg = 'Best val PLCC: {}, SROCC: {}'.format(plcc_computed, srcc_computed)
     logger.info(PrintToLogg)
     logger.info('---------------------------')
 

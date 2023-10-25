@@ -1,6 +1,6 @@
 import pandas as pd
 import torch.utils.data as data
-from torch import concat
+from torch import cat
 from torch import tensor
 import torchvision.transforms as T
 from PIL import Image
@@ -9,7 +9,6 @@ import os.path
 import scipy.io
 import numpy as np
 import csv
-from openpyxl import load_workbook
 
 def str_2_float_list(pseudolist):
     intermediate = pseudolist.strip('][').split(', ')
@@ -17,6 +16,29 @@ def str_2_float_list(pseudolist):
 def str_2_str_list(pseudolist):
     intermediate = pseudolist.strip('][').split(', ')
     return list(map(str, intermediate))
+
+spaq_meta_headers = [
+    "Brightness_x",
+    "Colorfulness",
+    "Contrast",
+    "Noisiness",
+    "Sharpness",
+    "Focal length",
+    "F-number",
+    "Exposure time",
+    "ISO",
+    "Brightness_y",
+    "Flash",
+    "Animal",
+    "Cityscape",
+    "Human",
+    "Indoor scene",
+    "Landscape",
+    "Night scene",
+    "Plant",
+    "Still-life",
+    "Others"
+]
 
 
 class LIVEFolder(data.Dataset):
@@ -103,13 +125,16 @@ class LIVEChallengeFolder(data.Dataset):
 
         for _, row in df.iterrows():
             for _ in range(patch_num):
+                # [1:] slices because 0 item in train is the same as original
                 if istrain:
-                    sample.append((f"{root}/Images/{row['image']}" , str_2_str_list(row['neighbours'])[1:k+1] ,str_2_float_list(row['neighbours_labels'])[1:k+1] , row['mos']  ))
+                    sample.append((f"{root}/Images/{row['image']}" , str_2_str_list(row['neighbours'])[1:k+1] ,str_2_float_list(row['neighbours_labels'])[1:] , row['mos']  ))
+                # no original pic in test 
                 else:
-                    sample.append((f"{root}/Images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:k] , row['mos']  ))
+                    sample.append((f"{root}/Images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['mos']  ))
 
         self.samples = sample
         self.transform = transform
+        self.root = root
 
     def __getitem__(self, index):
         """
@@ -120,7 +145,7 @@ class LIVEChallengeFolder(data.Dataset):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, neighbours, neighbours_target, target = self.samples[index]
-        samples, targets = [], []
+        samples, targets, metas = [], [],[]
         
         # main pic
         sample = pil_loader(path)
@@ -129,11 +154,11 @@ class LIVEChallengeFolder(data.Dataset):
         targets += [target]
         # pics neibours
         for neighbour_path in neighbours:
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('LIVE-itW')[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)
@@ -153,12 +178,13 @@ class CSIQFolder(data.Dataset):
             for _ in range(patch_num):
                 # [1:] slices because 0 item in train is the same as original
                 if istrain:
-                    sample.append((f"{root}/dst_imgs_all/{row['image']}.{row['dst_type']}.{row['dst_lev']}.png" , str_2_str_list(row['neighbours'])[1:k+1] , str_2_float_list(row['neighbours_labels'])[1:k+1], row['dmos'] ))
+                    sample.append((f"{root}/dst_imgs_all/{row['image']}.{row['dst_type']}.{row['dst_lev']}.png" , str_2_str_list(row['neighbours'])[1:k+1] , str_2_float_list(row['neighbours_labels'])[1:], row['dmos'] ))
                 # no original pic in test 
                 else:
-                    sample.append((f"{root}/dst_imgs_all/{row['image']}.{row['dst_type']}.{row['dst_lev']}.png" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:k], row['dmos'] ))
+                    sample.append((f"{root}/dst_imgs_all/{row['image']}.{row['dst_type']}.{row['dst_lev']}.png" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:], row['dmos'] ))
         self.samples = sample
         self.transform = transform
+        self.root = root
 
     def __getitem__(self, index):
         """
@@ -169,7 +195,7 @@ class CSIQFolder(data.Dataset):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, neighbours, neighbours_target, target = self.samples[index]
-        samples, targets = [], []
+        samples, targets, metas = [], [],[]
         
         # main pic
         sample = pil_loader(path)
@@ -180,11 +206,12 @@ class CSIQFolder(data.Dataset):
         for neighbour_path in neighbours:
             # [1:-1] slices because I saved pathes like this: "'path'"
             # so, broadcasting it to str returns 'path'
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('csiq')[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)
@@ -203,12 +230,13 @@ class SlyCSIQFolder(data.Dataset):
             for _ in range(patch_num):
                 # [1:] slices because 0 item in train is the same as original
                 if istrain:
-                    sample.append((f"{root}/dst_imgs_all/{row['image']}.{row['dst_type']}.{row['dst_lev']}.png" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:k], row['dmos'] ))
+                    sample.append((f"{root}/dst_imgs_all/{row['image']}.{row['dst_type']}.{row['dst_lev']}.png" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:], row['dmos'] ))
                 # no original pic in test 
                 else:
-                    sample.append((f"{root}/dst_imgs_all/{row['image']}.{row['dst_type']}.{row['dst_lev']}.png" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:k], row['dmos'] ))
+                    sample.append((f"{root}/dst_imgs_all/{row['image']}.{row['dst_type']}.{row['dst_lev']}.png" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:], row['dmos'] ))
         self.samples = sample
         self.transform = transform
+        self.root = root
 
     def __getitem__(self, index):
         """
@@ -219,7 +247,7 @@ class SlyCSIQFolder(data.Dataset):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, neighbours, neighbours_target, target = self.samples[index]
-        samples, targets = [], []
+        samples, targets, metas = [], [],[]
         
         # main pic
         sample = pil_loader(path)
@@ -230,11 +258,11 @@ class SlyCSIQFolder(data.Dataset):
         for neighbour_path in neighbours:
             # [1:-1] slices because I saved pathes like this: "'path'"
             # so, broadcasting it to str returns 'path'
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('csiq')[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)
@@ -250,12 +278,13 @@ class Koniq_10kFolder(data.Dataset):
         for _, row in df.iterrows():
             for _ in range(patch_num):
                 if istrain:
-                    sample.append((f"{root}/512x384/{row['image_name']}" , str_2_str_list(row['neighbours'])[1:k+1] ,str_2_float_list(row['neighbours_labels'])[1:k+1] , row['MOS']  ))
+                    sample.append((f"{root}/512x384/{row['image_name']}" , str_2_str_list(row['neighbours'])[1:k+1] ,str_2_float_list(row['neighbours_labels'])[1:] , row['MOS']  ))
                 else:
-                    sample.append((f"{root}/512x384/{row['image_name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:k] , row['MOS']  ))
+                    sample.append((f"{root}/512x384/{row['image_name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['MOS']  ))
 
         self.samples = sample
         self.transform = transform
+        self.root = root
 
     def __getitem__(self, index):
         """
@@ -266,7 +295,7 @@ class Koniq_10kFolder(data.Dataset):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, neighbours, neighbours_target, target = self.samples[index]
-        samples, targets = [], []
+        samples, targets, metas = [], [],[]
         
         # main pic
         sample = pil_loader(path)
@@ -275,11 +304,118 @@ class Koniq_10kFolder(data.Dataset):
         targets += [target]
         # pics neibours
         for neighbour_path in neighbours:
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('koniq10k')[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
+
+    def __len__(self):
+        length = len(self.samples)
+        return length
+    
+class Koniq_10kPartialFolder(data.Dataset):
+
+    def __init__(self, root, seed, index, transform, patch_num, istrain, k, retrieve_size):
+        df = pd.read_csv(f"{root}/koniq_{retrieve_size}_retr_aug_{seed}.csv")
+        df = df.iloc[index]
+        sample = []
+
+        for _, row in df.iterrows():
+            for _ in range(patch_num):
+                if istrain:
+                    sample.append((f"{root}/512x384/{row['image_name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['MOS']  ))
+                else:
+                    sample.append((f"{root}/512x384/{row['image_name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['MOS']  ))
+
+        self.samples = sample
+        self.transform = transform
+        self.root = root
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        path, neighbours, neighbours_target, target = self.samples[index]
+        samples, targets, metas = [], [],[]
+        
+        # main pic
+        sample = pil_loader(path)
+        sample = self.transform(sample)
+        samples.append(sample)
+        targets += [target]
+        # pics neibours
+        for neighbour_path in neighbours:
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('koniq10k')[1][:-1]}")
+            sample_neighbour = self.transform(sample_neighbour)
+            samples.append(sample_neighbour)
+        targets += neighbours_target
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
+
+    def __len__(self):
+        length = len(self.samples)
+        return length
+
+class Koniq_10kCrossFolder(data.Dataset):
+    # original = first picture is loaded from root
+    # neighbours = k others -> loaded from cross root
+    def __init__(self, root, cross_root, cross_dataset, seed, index, transform, patch_num, istrain, k, delimeter):
+        df = pd.read_csv(f"{root}/koniq_cross_{cross_dataset}_retr_aug_{seed}.csv")
+        df = df.iloc[index]
+        sample = []
+
+        for _, row in df.iterrows():
+            for _ in range(patch_num):
+                if istrain:
+                    sample.append((f"{root}/512x384/{row['image_name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['MOS']  ))
+                else:
+                    sample.append((f"{root}/512x384/{row['image_name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['MOS']  ))
+
+        self.samples = sample
+        self.transform = transform
+        self.root = root
+        self.cross_root = cross_root
+        self.cross_dataset = cross_dataset
+        self.delimeter = delimeter
+        if cross_dataset == 'spaq':
+            self.df = pd.read_csv(f"{cross_root}/spaq_info.csv")
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        path, neighbours, neighbours_target, target = self.samples[index]
+        samples, targets, metas = [], [],[]
+        
+        # main pic
+        sample = pil_loader(path)
+        sample = self.transform(sample)
+        samples.append(sample)
+        targets += [target]
+        # pics neibours
+        for neighbour_path in neighbours:
+            sample_neighbour = pil_loader(f"{self.cross_root}{neighbour_path.split(self.delimeter)[1][:-1]}")
+            sample_neighbour = self.transform(sample_neighbour)
+            samples.append(sample_neighbour)
+            if self.cross_dataset == 'spaq':
+                # metainfo
+                neighbour_name = neighbour_path.split('/')[-1][:-1]
+                neighbour_stats = self.df.loc[self.df['Image name'] == neighbour_name]
+                metas.append(
+                    [
+                        list(neighbour_stats[header])[0] for header in spaq_meta_headers
+                    ]
+                )
+        targets += neighbours_target
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)
@@ -333,12 +469,72 @@ class SpaqFolder(data.Dataset):
         for _, row in df.iterrows():
             for _ in range(patch_num):
                 if istrain:
-                    sample.append((f"{root}/TestImage/{row['Image name']}" , str_2_str_list(row['neighbours'])[1:k+1] ,str_2_float_list(row['neighbours_labels'])[1:k+1] , row['MOS']  ))
+                    sample.append((f"{root}/TestImage/{row['Image name']}" , str_2_str_list(row['neighbours'])[1:k+1] ,str_2_float_list(row['neighbours_labels'])[1:] , row['MOS']  ))
                 else:
-                    sample.append((f"{root}/TestImage/{row['Image name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:k] , row['MOS']  ))
+                    sample.append((f"{root}/TestImage/{row['Image name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['MOS']  ))
 
         self.samples = sample
         self.transform = transform
+        self.root = root
+        self.df = pd.read_csv(f"{root}/spaq_info.csv")
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        
+        path, neighbours, neighbours_target, target = self.samples[index]
+        samples, targets, metas = [], [], []
+        
+        # main pic
+        sample = pil_loader(path)
+        sample = self.transform(sample)
+        samples.append(sample)
+        targets += [target]
+        # pics neibours
+        for neighbour_path in neighbours:
+            # pics
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('spaq')[1][:-1]}")
+            sample_neighbour = self.transform(sample_neighbour)
+            samples.append(sample_neighbour)
+            # metainfo
+            neighbour_name = neighbour_path.split('/')[-1][:-1]
+            neighbour_stats = self.df.loc[self.df['Image name'] == neighbour_name]
+            metas.append(
+                [
+                    list(neighbour_stats[header])[0] for header in spaq_meta_headers
+                ]
+            )
+        targets += neighbours_target
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
+
+    def __len__(self):
+        length = len(self.samples)
+        return length
+    
+class SpaqCrossFolder(data.Dataset):
+
+    def __init__(self, root: str, cross_root: str, cross_dataset: str, seed: int, index, transform, patch_num: int, istrain: bool, k: int, delimeter: str):
+        df = pd.read_csv(f"{root}/spaq_cross_{cross_dataset}_retr_aug_{seed}.csv")
+        df = df.iloc[index]
+        sample = []
+
+        for _, row in df.iterrows():
+            for _ in range(patch_num):
+                if istrain:
+                    sample.append((f"{root}/TestImage/{row['Image name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['MOS']  ))
+                else:
+                    sample.append((f"{root}/TestImage/{row['Image name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['MOS']  ))
+
+        self.samples = sample
+        self.transform = transform
+        self.root = root
+        self.cross_root = cross_root
+        self.delimeter = delimeter
 
     def __getitem__(self, index):
         """
@@ -349,7 +545,7 @@ class SpaqFolder(data.Dataset):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, neighbours, neighbours_target, target = self.samples[index]
-        samples, targets = [], []
+        samples, targets, metas = [], [], []
         
         # main pic
         sample = pil_loader(path)
@@ -358,11 +554,11 @@ class SpaqFolder(data.Dataset):
         targets += [target]
         # pics neibours
         for neighbour_path in neighbours:
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            sample_neighbour = pil_loader(f"{self.cross_root}{neighbour_path.split(self.delimeter)[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)
@@ -378,12 +574,13 @@ class BiqFolder(data.Dataset):
         for _, row in df.iterrows():
             for _ in range(patch_num):
                 if istrain:
-                    sample.append((f"{root}/Images/{row['Image Name']}" , str_2_str_list(row['neighbours'])[1:k+1] ,str_2_float_list(row['neighbours_labels'])[1:k+1] , row['MOS']  ))
+                    sample.append((f"{root}/Images/{row['Image Name']}" , str_2_str_list(row['neighbours'])[1:k+1] ,str_2_float_list(row['neighbours_labels'])[1:] , row['MOS']  ))
                 else:
-                    sample.append((f"{root}/Images/{row['Image Name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:k] , row['MOS']  ))
+                    sample.append((f"{root}/Images/{row['Image Name']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['MOS']  ))
 
         self.samples = sample
         self.transform = transform
+        self.root = root
 
     def __getitem__(self, index):
         """
@@ -394,7 +591,7 @@ class BiqFolder(data.Dataset):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, neighbours, neighbours_target, target = self.samples[index]
-        samples, targets = [], []
+        samples, targets, metas = [], [],[]
         
         # main pic
         sample = pil_loader(path)
@@ -403,11 +600,11 @@ class BiqFolder(data.Dataset):
         targets += [target]
         # pics neibours
         for neighbour_path in neighbours:
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('BIQ2021')[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)
@@ -466,15 +663,16 @@ class TID2013Folder(data.Dataset):
         for _, row in df.iterrows():
             for _ in range(patch_num):
                 if istrain:
-                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[1:k+1] ,str_2_float_list(row['neighbours_labels'])[1:k+1] , row['mos']  ))
+                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[1:k+1] ,str_2_float_list(row['neighbours_labels'])[1:] , row['mos']  ))
                 else:
-                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:k] , row['mos']  ))
+                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['mos']  ))
         self.samples = sample
         self.transform = transform
+        self.root = root
 
     def __getitem__(self, index):
         path, neighbours, neighbours_target, target = self.samples[index]
-        samples, targets = [], []
+        samples, targets, metas = [], [],[]
         
         # main pic
         sample = pil_loader(path)
@@ -483,11 +681,11 @@ class TID2013Folder(data.Dataset):
         targets += [target]
         # pics neighbours
         for neighbour_path in neighbours:
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('tid2013')[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)
@@ -505,15 +703,16 @@ class SlyTID2013Folder(data.Dataset):
         for _, row in df.iterrows():
             for _ in range(patch_num):
                 if istrain:
-                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:k] , row['mos']  ))
+                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['mos']  ))
                 else:
-                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:k] , row['mos']  ))
+                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] ,str_2_float_list(row['neighbours_labels'])[:] , row['mos']  ))
         self.samples = sample
         self.transform = transform
+        self.root = root
 
     def __getitem__(self, index):
         path, neighbours, neighbours_target, target = self.samples[index]
-        samples, targets = [], []
+        samples, targets, metas = [], [],[]
         
         # main pic
         sample = pil_loader(path)
@@ -522,11 +721,11 @@ class SlyTID2013Folder(data.Dataset):
         targets += [target]
         # pics neighbours
         for neighbour_path in neighbours:
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('tid2013')[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)
@@ -544,11 +743,12 @@ class Kadid10k(data.Dataset):
         for _, row in df.iterrows():
             for _ in range(patch_num):
                 if istrain:
-                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[1:k+1] , str_2_float_list(row['neighbours_labels'])[1:k+1] , row['dmos'] ))
+                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[1:k+1] , str_2_float_list(row['neighbours_labels'])[1:] , row['dmos'] ))
                 else:
-                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:k] , row['dmos'] ))
+                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:] , row['dmos'] ))
         self.samples = sample
         self.transform = transform
+        self.root = root
 
     def __getitem__(self, index):
         """
@@ -560,7 +760,7 @@ class Kadid10k(data.Dataset):
         """
         path, neighbours, neighbours_target, target = self.samples[index]
 
-        samples, targets = [], []
+        samples, targets, metas = [], [],[]
         
         # main pic
         sample = pil_loader(path)
@@ -569,11 +769,11 @@ class Kadid10k(data.Dataset):
         targets += [target]
         # pics neibours
         for neighbour_path in neighbours:
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('kadid10k')[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)
@@ -591,11 +791,12 @@ class SlyKadid10k(data.Dataset):
         for _, row in df.iterrows():
             for _ in range(patch_num):
                 if istrain:
-                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:k] , row['dmos'] ))
+                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:] , row['dmos'] ))
                 else:
-                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:k] , row['dmos'] ))
+                    sample.append((f"{root}/distorted_images/{row['image']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:] , row['dmos'] ))
         self.samples = sample
         self.transform = transform
+        self.root = root
 
     def __getitem__(self, index):
         """
@@ -607,7 +808,7 @@ class SlyKadid10k(data.Dataset):
         """
         path, neighbours, neighbours_target, target = self.samples[index]
 
-        samples, targets = [], []
+        samples, targets, metas = [], [],[]
         
         # main pic
         sample = pil_loader(path)
@@ -616,11 +817,11 @@ class SlyKadid10k(data.Dataset):
         targets += [target]
         # pics neibours
         for neighbour_path in neighbours:
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('kadid10k')[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)
@@ -638,12 +839,13 @@ class PipalFolder(data.Dataset):
         for _, row in df.iterrows():
             for _ in range(patch_num):
                 if istrain:
-                    sample.append((f"{root}/Train_Dist/{row['dist_name']}" , str_2_str_list(row['neighbours'])[1:k+1] , str_2_float_list(row['neighbours_labels'])[1:k+1], row['elo_score'] ))
+                    sample.append((f"{root}/Train_Dist/{row['dist_name']}" , str_2_str_list(row['neighbours'])[1:k+1] , str_2_float_list(row['neighbours_labels'])[1:], row['elo_score'] ))
                 else:
-                    sample.append((f"{root}/Train_Dist/{row['dist_name']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:k], row['elo_score'] ))
+                    sample.append((f"{root}/Train_Dist/{row['dist_name']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:], row['elo_score'] ))
 
         self.samples = sample
         self.transform = transform
+        self.root = root
 
     def __getitem__(self, index):
         """
@@ -654,7 +856,7 @@ class PipalFolder(data.Dataset):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, neighbours, neighbours_target, target = self.samples[index]
-        samples, targets = [], []
+        samples, targets, metas = [], [],[]
         
         # main pic
         sample = pil_loader(path)
@@ -663,11 +865,11 @@ class PipalFolder(data.Dataset):
         targets += [target]
         # pics neibours
         for neighbour_path in neighbours:
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('train')[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)
@@ -685,12 +887,13 @@ class SlyPipalFolder(data.Dataset):
         for _, row in df.iterrows():
             for _ in range(patch_num):
                 if istrain:
-                    sample.append((f"{root}/Train_Dist/{row['dist_name']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:k], row['elo_score'] ))
+                    sample.append((f"{root}/Train_Dist/{row['dist_name']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:], row['elo_score'] ))
                 else:
-                    sample.append((f"{root}/Train_Dist/{row['dist_name']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:k], row['elo_score'] ))
+                    sample.append((f"{root}/Train_Dist/{row['dist_name']}" , str_2_str_list(row['neighbours'])[:k] , str_2_float_list(row['neighbours_labels'])[:], row['elo_score'] ))
 
         self.samples = sample
         self.transform = transform
+        self.root
 
     def __getitem__(self, index):
         """
@@ -701,7 +904,7 @@ class SlyPipalFolder(data.Dataset):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, neighbours, neighbours_target, target = self.samples[index]
-        samples, targets = [], []
+        samples, targets, metas = [], [],[]
         
         # main pic
         sample = pil_loader(path)
@@ -710,11 +913,11 @@ class SlyPipalFolder(data.Dataset):
         targets += [target]
         # pics neibours
         for neighbour_path in neighbours:
-            sample_neighbour = pil_loader(neighbour_path[1:-1])
+            sample_neighbour = pil_loader(f"{self.root}{neighbour_path.split('train')[1][:-1]}")
             sample_neighbour = self.transform(sample_neighbour)
             samples.append(sample_neighbour)
         targets += neighbours_target
-        return concat(samples, dim=0), tensor(targets)
+        return cat(samples, dim=0), tensor(targets), tensor(metas)
 
     def __len__(self):
         length = len(self.samples)

@@ -170,7 +170,7 @@ class Net(nn.Module):
 
 class TReS(object):
 	
-	def __init__(self, config, device,  svPath, datapath, train_idx, test_idx,Net):
+	def __init__(self, config, device,  svPath, datapath, train_idx, test_idx, Net):
 		super(TReS, self).__init__()
 		
 		self.device = device
@@ -208,10 +208,14 @@ class TReS(object):
 		best_plcc = 0.0
 		print('Epoch\tTrain_Loss\tTrain_SRCC\tTest_SRCC\tTest_PLCC\tLearning_Rate\tdroplr')
 		steps = 0
+		train_results = {}
 		results = {}
-		performPath = svPath +'/' + 'PLCC_SRCC_'+str(self.config.vesion)+'_'+str(seed)+'.json'
+		performPath = svPath +'/' + 'val_SRCC_PLCC_'+str(self.config.vesion)+'_'+str(seed)+'.json'
+		trainPerformPath = svPath +'/' + 'train_LOSS_SRCC_'+str(self.config.vesion)+'_'+str(seed)+'.json'
 		with open(performPath, 'w') as json_file2:
 			json.dump(  {} , json_file2)
+		with open(trainPerformPath, 'w') as json_file3:
+			json.dump( {}, json_file3 )
 		
 		for epochnum in range(self.epochs):
 			self.net.train()
@@ -285,10 +289,18 @@ class TReS(object):
 			
 			
 	
-			modelPath = svPath + '/model_{}_{}_{}'.format(str(self.config.vesion),str(seed),epochnum)
+			modelPath = svPath + '/model_{}_{}_{}'.format(str(self.config.vesion), str(seed),epochnum)
 			# torch.save(self.net.state_dict(), modelPath)
 
 			train_srcc, _ = stats.spearmanr(pred_scores, gt_scores)
+			train_loss = sum(epoch_loss) / len(epoch_loss)
+
+			train_results[epochnum] = (train_loss, train_srcc)
+			with open(trainPerformPath, "r+") as file:
+				data = json.load(file)
+				data.update(train_results)
+				file.seek(0)
+				json.dump(data, file)
 
 			test_srcc, test_plcc = self.test(self.test_data,epochnum,svPath,seed)
 
@@ -323,7 +335,7 @@ class TReS(object):
 				
 				self.solver = torch.optim.Adam(self.paras, weight_decay=self.weight_decay)
 
-		print('Best test SRCC %f, PLCC %f' % (best_srcc, best_plcc))
+		print('Best val SRCC %f, PLCC %f' % (best_srcc, best_plcc))
 
 		return best_srcc, best_plcc
 
@@ -347,23 +359,26 @@ class TReS(object):
 				pred,_ = self.net(img)
 				
 	
-				pred_scores = pred_scores + pred.cpu().tolist()
-				gt_scores = gt_scores + label.cpu().tolist()
+				pred_scores = pred_scores + pred.cpu().flatten().tolist()
+				gt_scores = gt_scores + label.cpu().flatten().tolist()
 				
 				steps2 += 1
 				
 		
-		
-			
 		pred_scores = np.mean(np.reshape(np.array(pred_scores), (-1, self.test_patch_num)), axis=1)
 		gt_scores = np.mean(np.reshape(np.array(gt_scores), (-1, self.test_patch_num)), axis=1)
 		
 
-# 		if not pretrained:
-		dataPath = svPath + '/test_prediction_gt_{}_{}_{}.csv'.format(str(self.config.vesion),str(seed),epochnum)
-		with open(dataPath, 'w') as f:
-			writer = csv.writer(f)
-			writer.writerows(zip(pred_scores, gt_scores))
+		if not pretrained:
+			dataPath = svPath + '/val_prediction_gt_{}_{}_{}.csv'.format(str(self.config.vesion),str(seed),epochnum)
+			with open(dataPath, 'w') as f:
+				writer = csv.writer(f)
+				writer.writerows(zip(pred_scores, gt_scores))
+		else:
+			dataPath = svPath + '/test_prediction_gt_{}_{}_{}.csv'.format(str(self.config.vesion),str(seed),epochnum)
+			with open(dataPath, 'w') as f:
+				writer = csv.writer(f)
+				writer.writerows(zip(pred_scores, gt_scores))
 			
 			
 		test_srcc, _ = stats.spearmanr(pred_scores, gt_scores)

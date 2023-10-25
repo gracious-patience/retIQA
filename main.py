@@ -265,10 +265,18 @@ def main(args):
                         K=args.k,
                         weighted=False
                     )
-            for ycbcr, rgb, _, y in test_loader:
-                res, _ = model(ycbcr.to(args.ret_device), rgb.to(args.ret_device))
-                gr_trs.append(y['metric'])
-                r_s.append(res)
+            # metric on val to tune hyperparameters
+            if args.val_iqa:
+                for ycbcr, rgb, _, y in val_loader:
+                    res, _ = model(ycbcr.to(args.ret_device), rgb.to(args.ret_device))
+                    gr_trs.append(y['metric'])
+                    r_s.append(res)
+            # final testing
+            else:
+                for ycbcr, rgb, _, y in test_loader:
+                    res, _ = model(ycbcr.to(args.ret_device), rgb.to(args.ret_device))
+                    gr_trs.append(y['metric'])
+                    r_s.append(res)
         # should we use baseline: TReS, Hyperiqa, etc. ?
         # if yes
         else:
@@ -302,14 +310,27 @@ def main(args):
 
             device_ret = args.ret_device
             device_base = args.backbone_device
-            for ycbcr, rgb_1, rgb_2, y in test_loader:
-                res = model(
-                    ycbcr.to(device_ret),
-                    rgb_1.to(device_ret),
-                    rgb_2.to(device_base)
-                )
-                gr_trs.append(y['metric'])
-                r_s.append(res)
+
+            # use validation samples to tune hyperparameters
+            if args.val_iqa:
+                for ycbcr, rgb_1, rgb_2, y in val_loader:
+                    res = model(
+                        ycbcr.to(device_ret),
+                        rgb_1.to(device_ret),
+                        rgb_2.to(device_base)
+                    )
+                    gr_trs.append(y['metric'])
+                    r_s.append(res)
+            # final testing
+            else:
+                for ycbcr, rgb_1, rgb_2, y in test_loader:
+                    res = model(
+                        ycbcr.to(device_ret),
+                        rgb_1.to(device_ret),
+                        rgb_2.to(device_base)
+                    )
+                    gr_trs.append(y['metric'])
+                    r_s.append(res)
 
         
 

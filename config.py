@@ -49,5 +49,7 @@ def load_config():
     parser.add_argument('--logging_path', type=str, default=None, help='path to where store the results')
     parser.add_argument('--k', type=int, default=9, help= "Parameter for nearest friends")
     parser.add_argument('--aggregation', type=str, default=None, help='type of aggregationn of retrieved values')
+    parser.add_argument('--val_iqa', type=int, default=1, help= "Validation samples or Test")
+    
 
     return parser.parse_args()
